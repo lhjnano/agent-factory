@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-factory"
+version = "1.0.0"
+description = "Work-based multi-agent development system with TOC optimization"
+authors = [
+    {name = "OpenCode"}
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "anyio>=4.0.0",
+    "attrs>=25.0.0",
+    "certifi>=2024.0.0",
+    "cffi>=2.0.0",
+    "click>=8.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["__pycache__*"]
+
+[tool.setuptools]
+zip-safe = false
+
+
+[tool.setuptools.package-data]
+agent_factory = ["*.json", "*.sh", "*.md"]

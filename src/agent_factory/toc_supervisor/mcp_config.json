@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "node",
+      "args": [
+        "/home/lhjnano/source/memory/build/index.js",
+        "stdio"
+      ],
+      "env": {}
+    },
+    "filesystem": {
+      "command": "node",
+      "args": [
+        "/home/lhjnano/source/filesystem/build/index.js",
+        "stdio"
+      ],
+      "env": {}
+    }
+  }
+}
