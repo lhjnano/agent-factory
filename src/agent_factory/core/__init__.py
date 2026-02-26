@@ -4,6 +4,8 @@ from .documentation import DocumentationManager, DocumentTemplate, DocumentType,
 from .agent_pool import AgentPool, AgentInstance, AgentStatus
 from .toc_supervisor import TOCSupervisor, BottleneckAnalysis, BottleneckType, ThroughputMetrics
 from .orchestrator import MultiAgentOrchestrator, WorkflowConfig, WorkflowResult
+from .context import WorkContext, WorkflowContext
+from .context_manager import ContextManager
 
 __all__ = [
     "Work", "WorkStatus", "WorkPriority", "WorkResult", "WorkQueue", "WorkPlan", "PlanStatus",
@@ -12,6 +14,7 @@ __all__ = [
     "AgentPool", "AgentInstance", "AgentStatus",
     "TOCSupervisor", "BottleneckAnalysis", "BottleneckType", "ThroughputMetrics",
     "MultiAgentOrchestrator", "WorkflowConfig", "WorkflowResult",
+    "WorkContext", "WorkflowContext", "ContextManager",
 ]
 
 # Work-Agent 통계 기능 추가

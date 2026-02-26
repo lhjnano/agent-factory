@@ -9,6 +9,7 @@ from .raci import RACI, RACIRole
 from .documentation import DocumentationManager, DocumentType
 from .agent_pool import AgentPool, AgentInstance, AgentStatus
 from .toc_supervisor import TOCSupervisor, BottleneckAnalysis
+from .context_manager import ContextManager
 
 
 @dataclass
@@ -49,6 +50,7 @@ class MultiAgentOrchestrator:
             work_queue=self.work_queue,
             raci=self.raci
         )
+        self.context_manager = ContextManager()
         
         self._works: Dict[str, Work] = {}
         self._results: Dict[str, WorkResult] = {}
@@ -57,12 +59,14 @@ class MultiAgentOrchestrator:
         self._work_handlers: Dict[str, Callable] = {}
         self._memory_storage = None
         self._filesystem_storage = None
+        self._current_workflow_id: Optional[str] = None
     
     def set_mcp_sessions(self, memory_session=None, filesystem_session=None):
         self._memory_storage = memory_session
         self._filesystem_storage = filesystem_session
         
         self.toc_supervisor.set_mcp_sessions(memory_session, filesystem_session)
+        self.context_manager.set_mcp_sessions(memory_session, filesystem_session)
     
     def register_agent_factory(self, agent_type: str, factory: Callable[[], AgentInstance]):
         self._agent_factories[agent_type] = factory
@@ -389,6 +393,27 @@ class MultiAgentOrchestrator:
         )
         
         try:
+            if self._current_workflow_id:
+                work_ctx = self.context_manager.create_work_context(
+                    workflow_id=self._current_workflow_id,
+                    work_id=work.work_id,
+                    work_type=work.work_type,
+                    inputs=work.inputs,
+                    dependencies=work.dependencies
+                )
+                
+                full_context = self.context_manager.get_full_context_for_work(
+                    self._current_workflow_id,
+                    work.work_id
+                )
+                
+                inputs_with_context = {
+                    **work.inputs,
+                    "_context": full_context
+                }
+            else:
+                inputs_with_context = work.inputs
+            
             if work.require_plan_approval and not work.has_approved_plan():
                 responsible_agents = self.raci.get_responsible_agents_for_plan_submission(work.work_id)
                 accountable_agent = self.raci.get_accountable_agent_for_plan_approval(work.work_id)
@@ -409,7 +434,7 @@ class MultiAgentOrchestrator:
             
             if handler:
                 output = await asyncio.wait_for(
-                    handler(work.inputs, agent),
+                    handler(inputs_with_context, agent),
                     timeout=work.timeout_seconds
                 )
                 result.output = output
@@ -426,6 +451,14 @@ class MultiAgentOrchestrator:
             }
             
             work.complete(result)
+            
+            if self._current_workflow_id and output:
+                output_dict = output if isinstance(output, dict) else {"result": output}
+                self.context_manager.update_work_outputs(
+                    self._current_workflow_id,
+                    work.work_id,
+                    output_dict
+                )
             
             if self.config.auto_document:
                 doc = self.doc_manager.generate_work_documentation(
@@ -486,6 +519,7 @@ class MultiAgentOrchestrator:
         parameters: Optional[Dict[str, Any]] = None
     ) -> WorkflowResult:
         workflow_id = f"workflow_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        self._current_workflow_id = workflow_id
         
         if template:
             work_ids = await self.create_workflow_from_template(template, parameters or {})
@@ -501,6 +535,15 @@ class MultiAgentOrchestrator:
                 total_tokens=0,
                 total_duration_seconds=0
             )
+        
+        workflow_name = parameters.get("name", "Unnamed Workflow") if parameters else "Unnamed Workflow"
+        workflow_description = parameters.get("description", "") if parameters else ""
+        
+        self.context_manager.create_workflow_context(
+            workflow_id=workflow_id,
+            name=workflow_name,
+            description=workflow_description
+        )
         
         for work in works:
             if work.work_id not in self._works:
@@ -604,6 +647,9 @@ class MultiAgentOrchestrator:
             if work.status == WorkStatus.COMPLETED:
                 docs = self.doc_manager.get_work_documents(work.work_id)
                 documents.extend([d.document_id for d in docs])
+        
+        await self.context_manager.save_workflow_context(workflow_id)
+        self._current_workflow_id = None
         
         return WorkflowResult(
             workflow_id=workflow_id,

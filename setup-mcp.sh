@@ -103,9 +103,9 @@ install_dependencies() {
     cd "$AGENT_DIR"
     
     # venv의 pip 사용
-    "$VENV_DIR/bin/pip" install mcp>=1.0.0 python-dotenv>=1.0.0
-    "$VENV_DIR/bin/pip" install pandas>=2.0.0 numpy>=2.0.0 torch>=2.0.0 scikit-learn>=1.5.0
-    "$VENV_DIR/bin/pip" install psycopg2-binary>=2.9.0
+    "$VENV_DIR/bin/pip" install "mcp>=1.0.0" "python-dotenv>=1.0.0"
+    "$VENV_DIR/bin/pip" install "pandas>=2.0.0" "numpy>=2.0.0" "torch>=2.0.0" "scikit-learn>=1.5.0"
+    "$VENV_DIR/bin/pip" install "psycopg2-binary>=2.9.0"
     
     for agent in problem_definition data_collection design_development training_optimization evaluation_validation deployment_monitoring coordinator; do
         req_file="$AGENT_DIR/$agent/requirements.txt"
