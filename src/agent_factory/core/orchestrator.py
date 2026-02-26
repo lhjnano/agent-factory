@@ -10,6 +10,8 @@ from .documentation import DocumentationManager, DocumentType
 from .agent_pool import AgentPool, AgentInstance, AgentStatus
 from .toc_supervisor import TOCSupervisor, BottleneckAnalysis
 from .context_manager import ContextManager
+from .skill_manager import SkillManager
+from .skill_analyzer import SkillAnalyzer
 
 
 @dataclass
@@ -40,7 +42,7 @@ class WorkflowResult:
 class MultiAgentOrchestrator:
     def __init__(self, config: Optional[WorkflowConfig] = None):
         self.config = config or WorkflowConfig()
-        
+
         self.work_queue = WorkQueue()
         self.agent_pool = AgentPool()
         self.raci = RACI()
@@ -51,7 +53,9 @@ class MultiAgentOrchestrator:
             raci=self.raci
         )
         self.context_manager = ContextManager()
-        
+        self.skill_manager = SkillManager(repo_root=Path.cwd())
+        self.skill_analyzer = SkillAnalyzer()
+
         self._works: Dict[str, Work] = {}
         self._results: Dict[str, WorkResult] = {}
         self._running = False
@@ -87,10 +91,12 @@ class MultiAgentOrchestrator:
         dependencies: Optional[List[str]] = None,
         priority: WorkPriority = WorkPriority.MEDIUM,
         estimated_tokens: int = 1000,
-        raci_roles: Optional[Dict[str, str]] = None
+        raci_roles: Optional[Dict[str, str]] = None,
+        tags: Optional[List[str]] = None,
+        auto_assign_skills: bool = True
     ) -> Work:
         work_id = f"{work_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(self._works)}"
-        
+
         work = Work(
             work_id=work_id,
             name=name,
@@ -101,17 +107,140 @@ class MultiAgentOrchestrator:
             dependencies=dependencies or [],
             inputs=inputs,
             estimated_tokens=estimated_tokens,
-            timeout_seconds=self.config.default_timeout
+            timeout_seconds=self.config.default_timeout,
+            tags=tags or []
         )
-        
+
         if raci_roles:
             for agent_id, role_str in raci_roles.items():
                 role = RACIRole(role_str.upper())
                 self.raci.assign(work_id, agent_id, role)
             work.raci_roles = raci_roles
-        
+
         self._works[work_id] = work
+
+        # Auto-assign skills based on work analysis
+        if auto_assign_skills:
+            asyncio.create_task(self._assign_skills_to_work(work))
+
         return work
+
+    async def _assign_skills_to_work(self, work: Work):
+        """Analyze work and assign skills dynamically."""
+        try:
+            # Get skill recommendations
+            recommendations = await self.skill_analyzer.analyze_work(
+                work_name=work.name,
+                work_description=work.description,
+                work_type=work.work_type,
+                tags=work.tags,
+                inputs=work.inputs
+            )
+
+            # Set required skills
+            work.required_skills = [rec.skill_name for rec in recommendations if rec.confidence > 0.6]
+
+            # Assign skills to RACI roles if RACI is set
+            if work.raci_roles:
+                skill_assignments = self.skill_analyzer.assign_skills_to_raci(
+                    recommendations, work.raci_roles
+                )
+                work.skill_assignments = skill_assignments
+
+                # Load and inject skills into agent
+                await self._inject_skills_to_agents(work, skill_assignments)
+
+        except Exception as e:
+            print(f"Failed to assign skills to work {work.work_id}: {e}")
+
+    async def _inject_skills_to_agents(self, work: Work, skill_assignments: Dict[str, Dict[str, List[str]]]):
+        """Load and assign skills to agents based on RACI assignments."""
+        for role, assignment in skill_assignments.items():
+            agent_id = assignment.get("agent_id")
+            skills = assignment.get("skills", [])
+
+            if not agent_id or not skills:
+                continue
+
+            # Get agent instance
+            agent = self.agent_pool.get_agent(agent_id)
+            if not agent:
+                continue
+
+            # Load skills for this agent
+            for skill_name in skills:
+                if skill_name not in agent.skills:
+                    skill_content = await self.skill_manager.get_skill_content(skill_name)
+                    if skill_content:
+                        agent.skills.append(skill_name)
+                        agent.skill_content[skill_name] = skill_content
+                        print(f"Assigned skill '{skill_name}' to agent '{agent_id}' for role '{role}'")
+
+    async def consult_and_assign_skills(self, work: Work, consultant_agent_id: str):
+        """
+        Allow a consultant agent to review and assign skills for a work.
+        This enables dynamic skill assignment by consulted RACI members.
+
+        Args:
+            work: The work to assign skills for
+            consultant_agent_id: The agent ID of the consultant making the assignment
+        """
+        # Get consultant agent
+        consultant = self.agent_pool.get_agent(consultant_agent_id)
+        if not consultant:
+            raise ValueError(f"Consultant agent '{consultant_agent_id}' not found")
+
+        # Consultant should have toc-supervisor-skill
+        if "toc-supervisor-skill" not in consultant.skills:
+            print(f"Warning: Consultant '{consultant_agent_id}' does not have toc-supervisor-skill")
+
+        # Get skill recommendations
+        recommendations = await self.skill_analyzer.analyze_work(
+            work_name=work.name,
+            work_description=work.description,
+            work_type=work.work_type,
+            tags=work.tags,
+            inputs=work.inputs
+        )
+
+        # Assign skills to RACI roles
+        skill_assignments = self.skill_analyzer.assign_skills_to_raci(
+            recommendations, work.raci_roles
+        )
+
+        # Update work with new assignments
+        work.skill_assignments = skill_assignments
+
+        # Inject skills to agents
+        await self._inject_skills_to_agents(work, skill_assignments)
+
+        return {
+            "work_id": work.work_id,
+            "consultant_id": consultant_agent_id,
+            "recommended_skills": [rec.skill_name for rec in recommendations],
+            "skill_assignments": skill_assignments,
+            "rationale": f"Skills assigned by consultant '{consultant_agent_id}' for work '{work.name}'"
+        }
+
+    async def get_work_skills(self, work_id: str) -> Dict[str, Any]:
+        """Get skill information for a work."""
+        work = self._works.get(work_id)
+        if not work:
+            raise ValueError(f"Work '{work_id}' not found")
+
+        # Load full skill content for all required skills
+        skill_details = {}
+        for skill_name in work.required_skills:
+            content = await self.skill_manager.get_skill_content(skill_name)
+            if content:
+                skill_details[skill_name] = content
+
+        return {
+            "work_id": work_id,
+            "required_skills": work.required_skills,
+            "skill_assignments": work.skill_assignments,
+            "skill_content": skill_details
+        }
     
     async def submit_work(self, work: Work) -> str:
         await self.work_queue.enqueue(work)

@@ -29,6 +29,8 @@ class AgentInstance:
     priority: int = 1
     metadata: Dict[str, Any] = field(default_factory=dict)
     execute_func: Optional[Callable] = None
+    skills: List[str] = field(default_factory=list)
+    skill_content: Dict[str, str] = field(default_factory=dict)
 
     @property
     def utilization(self) -> float:

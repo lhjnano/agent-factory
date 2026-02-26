@@ -2,10 +2,12 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 from enum import Enum
+from pathlib import Path
 import asyncio
-from .work import Work, WorkStatus, WorkPriority, WorkQueue, PlanStatus
+from .work import Work, WorkStatus, WorkPriority, WorkQueue, PlanStatus, WorkResult
 from .agent_pool import AgentPool, AgentStatus, AgentInstance
 from .raci import RACI, RACIRole
+from .skill_manager import SkillManager
 
 
 class BottleneckType(Enum):
@@ -48,17 +50,17 @@ class ThroughputMetrics:
 
 
 class TOCSupervisor:
-    def __init__(self, agent_pool: AgentPool, work_queue: WorkQueue, raci: RACI):
+    def __init__(self, agent_pool: AgentPool, work_queue: WorkQueue, raci: RACI, repo_root: Optional[Path] = None):
         self._agent_pool = agent_pool
         self._work_queue = work_queue
         self._raci = raci
-        
+
         self._bottlenecks: List[BottleneckAnalysis] = []
         self._throughput_history: List[ThroughputMetrics] = []
         self._optimization_log: List[Dict[str, Any]] = []
         self._completed_works: List[Dict[str, Any]] = []
         self._work_agent_history: Dict[str, List[Dict[str, Any]]] = {}
-        
+
         self._config = {
             "bottleneck_threshold": 0.7,
             "scaling_threshold": 0.85,
@@ -67,12 +69,15 @@ class TOCSupervisor:
             "token_budget_per_hour": 1000000,
             "target_utilization": 0.75,
         }
-        
+
         self._baseline_metrics = None
-        
+
         self._memory_storage: Optional[Any] = None
         self._filesystem_storage: Optional[Any] = None
         self._storage_path = None
+
+        # Skill management
+        self.skill_manager = SkillManager(repo_root or Path.cwd())
     
     async def analyze_system(self) -> Dict[str, Any]:
         analysis = {
@@ -748,7 +753,7 @@ class TOCSupervisor:
     async def generate_final_analysis(self, all_works: List[Work]) -> Dict[str, Any]:
         completed = [w for w in all_works if w.status == WorkStatus.COMPLETED]
         failed = [w for w in all_works if w.status == WorkStatus.FAILED]
-        
+
         analysis = {
             "timestamp": datetime.now().isoformat(),
             "work_summary": {
@@ -761,13 +766,116 @@ class TOCSupervisor:
             "agent_analysis": await self._analyze_agent_efficiency(),
             "bottleneck_analysis": await self._detect_final_bottlenecks(),
             "plan_approval_analysis": await self._analyze_plan_approvals(completed),
+            "skill_effectiveness_analysis": await self._analyze_skill_effectiveness(all_works),
             "recommendations": []
         }
-        
+
         recommendations = self._generate_final_recommendations(analysis)
         analysis["recommendations"] = recommendations
-        
+
         return analysis
+
+    async def _analyze_skill_effectiveness(self, all_works: List[Work]) -> Dict[str, Any]:
+        """
+        Analyze skill effectiveness across all works.
+        Returns metrics on skill usage, success rates, and efficiency.
+        """
+        # Get skill effectiveness from skill manager
+        skill_effectiveness = self.skill_manager.get_all_skill_effectiveness()
+
+        # Analyze skill usage by work type
+        skill_by_work_type: Dict[str, Dict[str, int]] = {}
+        skill_usage_count: Dict[str, int] = {}
+
+        for work in all_works:
+            work_type = work.work_type
+            if work_type not in skill_by_work_type:
+                skill_by_work_type[work_type] = {}
+
+            # Count skill usage from required_skills
+            for skill_name in work.required_skills:
+                if skill_name not in skill_by_work_type[work_type]:
+                    skill_by_work_type[work_type][skill_name] = 0
+                skill_by_work_type[work_type][skill_name] += 1
+
+                if skill_name not in skill_usage_count:
+                    skill_usage_count[skill_name] = 0
+                skill_usage_count[skill_name] += 1
+
+        # Generate skill effectiveness report
+        skill_report = {
+            "total_skills_loaded": len(self.skill_manager._skills),
+            "skills_with_metrics": len(skill_effectiveness),
+            "skill_recommendations": self.skill_manager.get_skill_recommendations(),
+            "skill_by_work_type": skill_by_work_type,
+            "skill_usage_ranking": sorted(
+                skill_usage_count.items(),
+                key=lambda x: x[1],
+                reverse=True
+            ),
+            "detailed_effectiveness": skill_effectiveness
+        }
+
+        # Identify top and low performing skills
+        if skill_effectiveness:
+            sorted_by_efficiency = sorted(
+                skill_effectiveness.items(),
+                key=lambda x: x[1].get("efficiency_score", 0),
+                reverse=True
+            )
+
+            if sorted_by_efficiency:
+                top_skill = sorted_by_efficiency[0]
+                low_skill = sorted_by_efficiency[-1]
+
+                skill_report["top_performing_skill"] = {
+                    "name": top_skill[0],
+                    "efficiency_score": top_skill[1].get("efficiency_score", 0),
+                    "success_rate": top_skill[1].get("success_rate", 0),
+                    "usage_count": top_skill[1].get("usage_count", 0)
+                }
+
+                skill_report["lowest_performing_skill"] = {
+                    "name": low_skill[0],
+                    "efficiency_score": low_skill[1].get("efficiency_score", 0),
+                    "success_rate": low_skill[1].get("success_rate", 0),
+                    "usage_count": low_skill[1].get("usage_count", 0)
+                }
+
+        return skill_report
+
+    async def record_work_completion(self, work: Work, result: WorkResult, agent_id: str):
+        """
+        Record work completion and update skill effectiveness metrics.
+        This should be called whenever a work is completed.
+        """
+        # Update skill effectiveness for each skill used
+        for skill_name in work.required_skills:
+            success = result.status == WorkStatus.COMPLETED
+            tokens_used = result.metrics.get("tokens_used", 0)
+            duration_seconds = result.duration_seconds or 0.0
+
+            self.skill_manager.record_skill_usage(
+                skill_name=skill_name,
+                success=success,
+                tokens_used=tokens_used,
+                duration_seconds=duration_seconds
+            )
+
+        # Record to work-agent history for TOC analysis
+        if agent_id not in self._work_agent_history:
+            self._work_agent_history[agent_id] = []
+
+        self._work_agent_history[agent_id].append({
+            "work_id": work.work_id,
+            "work_type": work.work_type,
+            "skills_used": work.required_skills,
+            "skill_assignments": work.skill_assignments,
+            "status": result.status.value,
+            "tokens_used": result.metrics.get("tokens_used", 0),
+            "duration_seconds": result.duration_seconds,
+            "completed_at": result.completed_at.isoformat() if result.completed_at else None
+        })
     
     async def _analyze_token_efficiency(self, completed_works: List[Work]) -> Dict[str, Any]:
         if not completed_works:
@@ -942,7 +1050,7 @@ class TOCSupervisor:
                 "priority": "medium",
                 "category": "work_type_optimization",
                 "title": f"{ineff['work_type']} 작업 토큰 최적화",
-                "description": f"{ineff['work_type']} 작업의 효율이 {ineff['efficiency']:.1f%}로 낮습니다.",
+                "description": f"{ineff['work_type']} 작업의 효율이 {ineff['efficiency']:.1f}%로 낮습니다.",
                 "actions": [
                     f"{ineff['work_type']} 작업 핸들러 프롬프트 최적화",
                     "불필요한 중간 단계 제거",

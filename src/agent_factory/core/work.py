@@ -91,6 +91,8 @@ class Work:
     execute_func: Optional[Callable] = None
     require_plan_approval: bool = False
     plan: Optional[WorkPlan] = None
+    required_skills: List[str] = field(default_factory=list)
+    skill_assignments: Dict[str, Dict[str, List[str]]] = field(default_factory=dict)
 
     def can_start(self, completed_work_ids: set) -> bool:
         return all(dep_id in completed_work_ids for dep_id in self.dependencies)

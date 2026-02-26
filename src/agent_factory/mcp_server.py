@@ -12,6 +12,9 @@ from .design_development.agent import DesignDevelopmentAgent
 from .training_optimization.agent import TrainingOptimizationAgent
 from .evaluation_validation.agent import EvaluationValidationAgent
 from .deployment_monitoring.agent import DeploymentMonitoringAgent
+from .core.skill_manager import SkillManager
+from .core.skill_analyzer import SkillAnalyzer
+from pathlib import Path
 
 AGENT_DIR = Path(__file__).parent
 HOME_DIR = Path("/var/lib/agent-factory")
@@ -203,6 +206,78 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["version"]
             }
+        ),
+        Tool(
+            name="assign_skills_to_work",
+            description="Analyze work and dynamically assign appropriate skills based on RACI roles",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "work_id": {
+                        "type": "string",
+                        "description": "Work ID to assign skills to"
+                    },
+                    "consultant_agent_id": {
+                        "type": "string",
+                        "description": "Agent ID of the consultant making the assignment (optional)"
+                    }
+                },
+                "required": ["work_id"]
+            }
+        ),
+        Tool(
+            name="get_work_skills",
+            description="Get skill assignments and content for a specific work",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "work_id": {
+                        "type": "string",
+                        "description": "Work ID to get skills for"
+                    }
+                },
+                "required": ["work_id"]
+            }
+        ),
+        Tool(
+            name="get_skill_effectiveness",
+            description="Get skill effectiveness metrics for all skills or a specific skill",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "skill_name": {
+                        "type": "string",
+                        "description": "Specific skill name (optional, returns all if not provided)"
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="analyze_work_for_skills",
+            description="Analyze a work and recommend appropriate skills",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "work_name": {
+                        "type": "string",
+                        "description": "Name of the work"
+                    },
+                    "work_description": {
+                        "type": "string",
+                        "description": "Detailed description of the work"
+                    },
+                    "work_type": {
+                        "type": "string",
+                        "description": "Type of work (e.g., problem_definition, data_collection)"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of tags associated with the work"
+                    }
+                },
+                "required": ["work_name", "work_description", "work_type"]
+            }
         )
     ]
 
@@ -293,7 +368,45 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
             result = await agent.monitor_performance(arguments.get("version", "1.0.0"))
             await agent.close()
             return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
-        
+
+        elif name == "analyze_work_for_skills":
+            skill_analyzer = SkillAnalyzer()
+            recommendations = await skill_analyzer.analyze_work(
+                work_name=arguments.get("work_name", ""),
+                work_description=arguments.get("work_description", ""),
+                work_type=arguments.get("work_type", ""),
+                tags=arguments.get("tags", []),
+                inputs={}
+            )
+            result = {
+                "recommendations": [
+                    {
+                        "skill_name": rec.skill_name,
+                        "confidence": rec.confidence,
+                        "reason": rec.reason,
+                        "category": rec.category.value
+                    }
+                    for rec in recommendations
+                ]
+            }
+            return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+
+        elif name == "get_skill_effectiveness":
+            skill_manager = SkillManager(repo_root=Path.cwd())
+            skill_name = arguments.get("skill_name")
+
+            if skill_name:
+                result = skill_manager.get_skill_effectiveness(skill_name)
+                if not result:
+                    result = {"error": f"Skill '{skill_name}' not found or has no metrics"}
+            else:
+                result = skill_manager.get_all_skill_effectiveness()
+                recommendations = skill_manager.get_skill_recommendations()
+                result_dict = {"skill_effectiveness": result, "recommendations": recommendations}
+                result = result_dict
+
+            return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+
         else:
             raise ValueError(f"Unknown tool: {name}")
     

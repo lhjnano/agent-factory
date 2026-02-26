@@ -9,6 +9,7 @@ dist/
 downloads/
 eggs/
 .eggs/
+.agent/
 lib/
 lib64/
 parts/
