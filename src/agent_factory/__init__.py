@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 AGENT_DIR = Path(__file__).parent
-HOME_DIR = Path.home()
+HOME_DIR = Path("/var/lib/agent-factory")
 
 def expand_config_paths(config):
     """JSON config에서 환경변수를 확장합니다."""

@@ -14,7 +14,7 @@ from .evaluation_validation.agent import EvaluationValidationAgent
 from .deployment_monitoring.agent import DeploymentMonitoringAgent
 
 AGENT_DIR = Path(__file__).parent
-HOME_DIR = Path.home()
+HOME_DIR = Path("/var/lib/agent-factory")
 
 app = Server("multi-agent-development-system")
 

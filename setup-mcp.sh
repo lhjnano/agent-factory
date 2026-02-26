@@ -154,7 +154,16 @@ setup_databases() {
 setup_directories() {
     echo ""
     echo "Creating directories..."
-    mkdir -p "$HOME"/{data,models,checkpoints,src,results,reports,deployments,logs}
+    
+    # /var/lib/agent-factory는 sudo 권한 필요
+    if [ -w /var/lib ]; then
+        mkdir -p /var/lib/agent-factory/{data,models,checkpoints,src,results,reports,deployments,logs}
+    else
+        echo "  Creating /var/lib/agent-factory (requires sudo)..."
+        sudo mkdir -p /var/lib/agent-factory/{data,models,checkpoints,src,results,reports,deployments,logs}
+        sudo chown -R $(whoami):$(whoami) /var/lib/agent-factory
+    fi
+    
     mkdir -p "$AGENT_DIR/workflows"
     echo "✓ Directories created"
 }
