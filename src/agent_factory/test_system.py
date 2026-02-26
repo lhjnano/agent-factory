@@ -69,7 +69,8 @@ async def test_raci_assignment():
     
     agents = [
         AgentInstance(agent_id="agent_a", agent_type="type_a", capabilities=["a"]),
-        AgentInstance(agent_id="agent_b", agent_type="type_b", capabilities=["b"])
+        AgentInstance(agent_id="agent_b", agent_type="type_b", capabilities=["b"]),
+        AgentInstance(agent_id="agent_c", agent_type="type_c", capabilities=["c"])
     ]
     
     for agent in agents:
@@ -88,8 +89,8 @@ async def test_raci_assignment():
         work_id=work.work_id,
         responsible=["agent_a"],
         accountable="agent_b",
-        consulted=["agent_b"],
-        informed=["agent_a"]
+        consulted=["agent_c"],
+        informed=["agent_c"]
     )
     
     validation = orchestrator.raci.validate_all()
@@ -183,7 +184,7 @@ async def test_workflow_dependencies():
     result = await orchestrator.execute_workflow(works=[work1, work2, work3])
     
     assert result.works_completed == 3, f"Expected 3 completed, got {result.works_completed}"
-    assert work3.completed_at > work1.completed_at, "Work 3 should complete after Work 1"
+    assert work3.completed_at is not None and work1.completed_at is not None and work3.completed_at > work1.completed_at, "Work 3 should complete after Work 1"
     
     print("✓ Workflow dependencies test passed")
 
@@ -216,7 +217,9 @@ async def test_documentation():
         document_type=DocumentType.ARCHITECTURE_DESIGN,
         sections={
             "overview": "테스트 아키텍처",
-            "components": "Component A, Component B"
+            "components": "Component A, Component B",
+            "data_flow": "데이터 흐름 설명",
+            "interfaces": "인터페이스 정의"
         },
         metadata={"version": "1.0"}
     )

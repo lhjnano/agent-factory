@@ -213,9 +213,12 @@ class WorkQueue:
             self._queue.append(work)
             self._queue.sort(key=lambda w: w.priority.value)
 
-    async def dequeue(self, agent_capabilities: List[str]) -> Optional[Work]:
+    async def dequeue(self, agent_capabilities: List[str], completed_work_ids: Optional[set] = None) -> Optional[Work]:
         async with self._lock:
-            completed_ids = {w.work_id for w in self._queue if w.status == WorkStatus.COMPLETED}
+            # Remove completed works from queue
+            self._queue = [w for w in self._queue if w.status != WorkStatus.COMPLETED]
+            
+            completed_ids = completed_work_ids or set()
             for i, work in enumerate(self._queue):
                 if work.status == WorkStatus.QUEUED:
                     if work.agent_type in agent_capabilities:

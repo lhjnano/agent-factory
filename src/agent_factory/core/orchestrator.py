@@ -366,12 +366,8 @@ class MultiAgentOrchestrator:
                     if not agent:
                         continue
                     
-                    work = await self.work_queue.dequeue([agent_type])
+                    work = await self.work_queue.dequeue([agent_type], completed_ids)
                     if not work:
-                        continue
-                    
-                    if not work.can_start(completed_ids):
-                        await self.work_queue.enqueue(work)
                         continue
                     
                     asyncio.create_task(self._execute_work(work, agent))
@@ -512,16 +508,27 @@ class MultiAgentOrchestrator:
             if work.status == WorkStatus.PENDING:
                 await self.submit_work(work)
         
-        while True:
-            all_done = all(
-                w.status in [WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.CANCELLED]
-                for w in works
-            )
-            
-            if all_done:
-                break
-            
-            await asyncio.sleep(0.5)
+        self._running = True
+        process_task = asyncio.create_task(self._process_works())
+        
+        try:
+            while True:
+                all_done = all(
+                    w.status in [WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.CANCELLED]
+                    for w in works
+                )
+                
+                if all_done:
+                    break
+                
+                await asyncio.sleep(0.1)
+        finally:
+            self._running = False
+            process_task.cancel()
+            try:
+                await process_task
+            except asyncio.CancelledError:
+                pass
         
         for work in works:
             if work.status == WorkStatus.COMPLETED:
