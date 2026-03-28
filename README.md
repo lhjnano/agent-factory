@@ -1,25 +1,25 @@
 # Agent Factory
 
-Work 기반 멀티 에이전트 시스템 아키텍처
+Work-based Multi-Agent System Architecture
 
-## 개요
+## Overview
 
-이 시스템은 다음과 같은 핵심 기능을 제공합니다:
+This system provides the following core functionalities:
 
-- **Work 기반 작업 분류**: 모든 작업을 Work 단위로 정의
-- **다중 에이전트 배치**: 여러 에이전트 인스턴스를 배치하여 병렬 처리
-- **RACI 매트릭스**: 책임 소재 명확화 및 협업 체계화
-- **Skill 시스템**: Work 마다 동적으로 skill을 할당하고 효과를 모니터링
-- **자동 문서화**: 작업 완료 후 표준화된 문서 자동 생성
-- **TOC (제약이론) 기반 최적화**: 병목 현상 식별 및 처리량 최적화
+- **Work-based Task Classification**: Define all tasks in Work units
+- **Multi-Agent Deployment**: Deploy multiple agent instances for parallel processing
+- **RACI Matrix**: Clarify responsibility and structure collaboration
+- **Skill System**: Dynamically assign skills to each Work and monitor effectiveness
+- **Automatic Documentation**: Automatically generate standardized documentation after task completion
+- **TOC (Theory of Constraints) Based Optimization**: Identify bottlenecks and optimize throughput
 
-## Skill 시스템
+## Skill System
 
-### 개요
+### Overview
 
-Agent Factory v2에서는 **동적 Skill 시스템**을 도입하여 각 Work에 맞는 skill을 실시간으로 할당하고, Consulted 역할이 RACI 멤버들에게 skill을 배분할 수 있습니다.
+Agent Factory v2 introduces a **Dynamic Skill System** that assigns appropriate skills to each Work in real-time, and allows the Consulted role to distribute skills to RACI members.
 
-### Skill 구조
+### Skill Structure
 
 ```
 .agent/skills/
@@ -39,23 +39,23 @@ Agent Factory v2에서는 **동적 Skill 시스템**을 도입하여 각 Work에
     └── SKILL.md
 ```
 
-### 사용 가능한 Skill
+### Available Skills
 
-| Skill 이름 | 설명 | 사용 시나리오 |
-|-----------|--------|---------------|
-| `problem-definition-skill` | 문제 정의 및 요구사항 수집 | 프로젝트 시작, 범위 정의 |
-| `data-collection-skill` | 데이터 수집 및 전처리 | ML/AI 데이터 파이프라인 |
-| `design-development-skill` | 시스템 설계 및 코드 생성 | 아키텍처 설계, 개발 |
-| `training-optimization-skill` | 모델 학습 및 최적화 | ML 모델 훈련, 하이퍼파라미터 튜닝 |
-| `evaluation-validation-skill` | 모델 평가 및 검증 | 테스트, 성능 측정 |
-| `deployment-monitoring-skill` | 배포 및 모니터링 | 프로덕션 배포, 운영 |
-| `toc-supervisor-skill` | 워크플로우 오케스트레이션 및 최적화 | 병목 분석, 처리량 최적화 |
+| Skill Name | Description | Use Case |
+|-----------|-------------|----------|
+| `problem-definition-skill` | Problem definition and requirements gathering | Project start, scope definition |
+| `data-collection-skill` | Data collection and preprocessing | ML/AI data pipeline |
+| `design-development-skill` | System design and code generation | Architecture design, development |
+| `training-optimization-skill` | Model training and optimization | ML model training, hyperparameter tuning |
+| `evaluation-validation-skill` | Model evaluation and validation | Testing, performance measurement |
+| `deployment-monitoring-skill` | Deployment and monitoring | Production deployment, operations |
+| `toc-supervisor-skill` | Workflow orchestration and optimization | Bottleneck analysis, throughput optimization |
 
-### 동적 Skill 할당
+### Dynamic Skill Assignment
 
-#### 자동 Skill 할당
+#### Automatic Skill Assignment
 
-Work 생성 시 자동으로 skill이 추천됩니다:
+When a Work is created, skills are automatically recommended:
 
 ```python
 work = orchestrator.create_work(
@@ -65,14 +65,14 @@ work = orchestrator.create_work(
     agent_type="design_development",
     inputs={"tech_stack": "FastAPI, PostgreSQL"},
     tags=["web", "api", "backend"],
-    auto_assign_skills=True  # 자동 skill 할당 활성화
+    auto_assign_skills=True  # Enable automatic skill assignment
 )
 
-# Work에 할당된 skill 확인
+# Check skills assigned to Work
 print(work.required_skills)
 # ['design-development-skill', 'toc-supervisor-skill']
 
-# RACI별 skill 할당 확인
+# Check skill assignments by RACI role
 print(work.skill_assignments)
 # {
 #   "responsible": {"agent_id": "dev_1", "skills": ["design-development-skill"], ...},
@@ -81,34 +81,34 @@ print(work.skill_assignments)
 # }
 ```
 
-#### Consulted에 의한 Skill 할당
+#### Skill Assignment by Consulted
 
-Consulted 역할의 에이전트가 skill을 검토하고 배분할 수 있습니다:
+The Consulted role agent can review and distribute skills:
 
 ```python
-# Consultant agent가 skill 할당 검토
+# Consultant agent reviews skill assignment
 assignment_result = await orchestrator.consult_and_assign_skills(
     work=work,
     consultant_agent_id="toc_supervisor_1"
 )
 
-# 결과 확인
+# Check results
 print(assignment_result["recommended_skills"])
 # ['design-development-skill', 'deployment-monitoring-skill']
 
 print(assignment_result["skill_assignments"])
-# 각 RACI 역할에 할당된 skill
+# Skills assigned to each RACI role
 ```
 
-### Skill Effectiveness 모니터링
+### Skill Effectiveness Monitoring
 
-TOC Supervisor는 각 skill의 효과를 모니터링합니다:
+TOC Supervisor monitors the effectiveness of each skill:
 
 ```python
-# Workflow 완료 후 자동으로 skill effectiveness 분석
+# After workflow completion, automatically analyze skill effectiveness
 result = await orchestrator.execute_workflow(works=works)
 
-# Skill effectiveness 보고서 확인
+# Check skill effectiveness report
 print(result.skill_effectiveness_analysis)
 # {
 #   "total_skills_loaded": 7,
@@ -127,35 +127,35 @@ print(result.skill_effectiveness_analysis)
 # }
 ```
 
-### Skill Effectiveness 메트릭
+### Skill Effectiveness Metrics
 
-| 메트릭 | 설명 | 목표 |
-|--------|------|------|
-| Usage Count | Skill이 사용된 횟수 | 일관적 사용 |
-| Success Rate | Skill 사용 시 성공률 | > 95% |
-| Avg Tokens | Skill 사용당 평균 토큰 | 낮을수록 좋음 |
-| Avg Duration | Skill 사용당 평균 시간 | 낮을수록 좋음 |
-| Efficiency Score | 종합 효율 점수 (0-1) | > 0.8 |
+| Metric | Description | Target |
+|--------|-------------|--------|
+| Usage Count | Number of times skill was used | Consistent usage |
+| Success Rate | Success rate when skill is used | > 95% |
+| Avg Tokens | Average tokens per skill usage | Lower is better |
+| Avg Duration | Average time per skill usage | Lower is better |
+| Efficiency Score | Overall efficiency score (0-1) | > 0.8 |
 
-### Skill 추천 알고리즘
+### Skill Recommendation Algorithm
 
-SkillAnalyzer는 다음 요소를 고려하여 skill을 추천합니다:
+SkillAnalyzer recommends skills by considering the following factors:
 
-1. **Work Type**: 기본적으로 work_type에 맞는 skill을 할당
-2. **Description 분석**: 작업 설명의 키워드 매칭
-3. **Tags**: 태그를 통한 skill 관련성 분석
-4. **Inputs**: 입력 매개변수 분석
+1. **Work Type**: Assign skills matching work_type by default
+2. **Description Analysis**: Keyword matching in task description
+3. **Tags**: Analyze skill relevance through tags
+4. **Inputs**: Analyze input parameters
 
-#### RACI 역할별 Skill 할당
+#### Skill Assignment by RACI Role
 
-| 역할 | Skill 카테고리 | 설명 |
-|------|---------------|------|
-| Responsible | CORE, SPECIALIZED | 주요 작업 수행 skill |
-| Accountable | CORE, QUALITY | 승인 및 품질 보증 skill |
-| Consulted | SUPPORT, SPECIALIZED, QUALITY | 자문 및 검토 skill |
-| Informed | SUPPORT | 정보 수신을 위한 support skill |
+| Role | Skill Category | Description |
+|------|---------------|-------------|
+| Responsible | CORE, SPECIALIZED | Main task execution skills |
+| Accountable | CORE, QUALITY | Approval and quality assurance skills |
+| Consulted | SUPPORT, SPECIALIZED, QUALITY | Consulting and review skills |
+| Informed | SUPPORT | Support skills for receiving information |
 
-## 아키텍처 다이어그램
+## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -168,7 +168,7 @@ SkillAnalyzer는 다음 요소를 고려하여 skill을 추천합니다:
 │                          │                                       │
 │  ┌───────────────────────┴───────────────────────────────────┐ │
 │  │                    TOCSupervisor                            │ │
-│  │  - 병목 분석  - 처리량 계산  - 최적화 실행  - 제약 식별   │ │
+│  │  - Bottleneck analysis  - Throughput calculation  - Optimization execution  - Constraint identification   │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                          │                                       │
 │  ┌───────────────────────┴───────────────────────────────────┐ │
@@ -176,37 +176,37 @@ SkillAnalyzer는 다음 요소를 고려하여 skill을 추천합니다:
 │  │  R(Responsible) - A(Accountable) - C(Consulted) - I(Informed)│
 │  └─────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
-                           │
-       ┌───────────────────┼───────────────────┐
-       ▼                   ▼                   ▼
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│   Agent 1    │   │   Agent 2    │   │   Agent N    │
-│  (Instance)  │   │  (Instance)  │   │  (Instance)  │
-└──────────────┘   └──────────────┘   └──────────────┘
-```
+                            │
+        ┌───────────────────┼───────────────────┐
+        ▼                   ▼                   ▼
+ ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+ │   Agent 1    │   │   Agent 2    │   │   Agent N    │
+ │  (Instance)  │   │  (Instance)  │   │  (Instance)  │
+ └──────────────┘   └──────────────┘   └──────────────┘
+ ```
 
-## 핵심 구성 요소
+## Core Components
 
-### 1. Work (작업 단위)
+### 1. Work (Task Unit)
 
 ```python
 from agent_factory.core import Work, WorkPriority
 
 work = Work(
     work_id="unique_id",
-    name="작업 이름",
-    description="작업 설명",
+    name="Task Name",
+    description="Task Description",
     work_type="design_development",
     agent_type="design_development",
     priority=WorkPriority.HIGH,
     dependencies=["other_work_id"],
     inputs={"key": "value"},
     estimated_tokens=1000,
-    require_plan_approval=True  # 계획 승인 요구
+    require_plan_approval=True  # Require plan approval
 )
 ```
 
-### 2. AgentPool (에이전트 풀)
+### 2. AgentPool (Agent Pool)
 
 ```python
 from agent_factory.core import AgentPool, AgentInstance, AgentStatus
@@ -223,7 +223,7 @@ agent = AgentInstance(
 pool.register_agent(agent)
 ```
 
-### 3. RACI 매트릭스
+### 3. RACI Matrix
 
 ```python
 from agent_factory.core import RACI, RACIRole
@@ -235,7 +235,7 @@ raci.assign("work_1", "agent_c", RACIRole.CONSULTED)
 raci.assign("work_1", "agent_d", RACIRole.INFORMED)
 ```
 
-### 4. TOC Supervisor (총괄 에이전트)
+### 4. TOC Supervisor (General Agent)
 
 ```python
 from agent_factory.core import TOCSupervisor
@@ -251,13 +251,13 @@ optimization = await supervisor.optimize()
 report = supervisor.get_optimization_report()
 ```
 
-### 5. 계획 승인 (Plan Approval)
+### 5. Plan Approval
 
 ```python
-# Work 생성 및 RACI 할당
+# Create Work and assign RACI
 work = orchestrator.create_work(
     name="Build API",
-    description="REST API 구현",
+    description="Implement REST API",
     work_type="design_development",
     agent_type="design_development",
     inputs={"endpoint": "/api/users"},
@@ -266,27 +266,27 @@ work = orchestrator.create_work(
 
 orchestrator.assign_raci(
     work_id=work.work_id,
-    responsible=["dev_agent"],      # 계획 제출 및 작업 실행
-    accountable="senior_agent",      # 계획 승인
+    responsible=["dev_agent"],      # Plan submission and task execution
+    accountable="senior_agent",      # Plan approval
     consulted=[],
     informed=[]
 )
 
-# 계획 승인 요구 설정
+# Set plan approval requirement
 orchestrator.set_work_plan_approval_required(work.work_id, True)
 
-# RESPONSIBLE agent가 계획 제출
+# RESPONSIBLE agent submits plan
 plan = {
-    "approach": "FastAPI 사용",
+    "approach": "Use FastAPI",
     "steps": [
-        "1. FastAPI 앱 초기화",
-        "2. Pydantic 모델 정의",
-        "3. /api/users 엔드포인트 구현"
+        "1. Initialize FastAPI app",
+        "2. Define Pydantic models",
+        "3. Implement /api/users endpoint"
     ],
     "estimated_files": ["main.py", "models.py"],
     "estimated_hours": 4,
-    "risks": ["DB 연결 지연 가능성"],
-    "expected_results": "JSON 응답 반환"
+    "risks": ["Possible DB connection delay"],
+    "expected_results": "Return JSON response"
 }
 
 submit_result = orchestrator.submit_work_plan(
@@ -295,16 +295,16 @@ submit_result = orchestrator.submit_work_plan(
     proposed_by="dev_agent"
 )
 
-# ACCOUNTABLE agent가 계획 검토 후 승인
+# ACCOUNTABLE agent reviews and approves plan
 approve_result = orchestrator.approve_work_plan(
     work_id=work.work_id,
     approved_by="senior_agent"
 )
 
-# 이제 작업 실행 가능
+# Now task can be executed
 ```
 
-### 6. 문서화 시스템
+### 6. Documentation System
 
 ```python
 from agent_factory.core import DocumentationManager, DocumentType
@@ -316,25 +316,25 @@ doc = doc_manager.create_document(
     work_id="work_1",
     agent_id="agent_1",
     sections={
-        "overview": "시스템 개요",
-        "components": "구성 요소",
-        "data_flow": "데이터 흐름"
+        "overview": "System overview",
+        "components": "Components",
+        "data_flow": "Data flow"
     }
 )
 ```
 
-## Work 타입 및 에이전트 매핑
+## Work Type and Agent Mapping
 
-| Work 타입 | 에이전트 타입 | 설명 |
+| Work Type | Agent Type | Description |
 |-----------|---------------|------|
-| `problem_definition` | ProblemDefinitionAgent | 문제 정의 |
-| `data_collection` | DataCollectionAgent | 데이터 수집/전처리 |
-| `design_development` | DesignDevelopmentAgent | 설계/개발 |
-| `training_optimization` | TrainingOptimizationAgent | 학습/최적화 |
-| `evaluation_validation` | EvaluationValidationAgent | 평가/검증 |
-| `deployment_monitoring` | DeploymentMonitoringAgent | 배포/모니터링 |
+| `problem_definition` | ProblemDefinitionAgent | Problem definition |
+| `data_collection` | DataCollectionAgent | Data collection/preprocessing |
+| `design_development` | DesignDevelopmentAgent | Design/development |
+| `training_optimization` | TrainingOptimizationAgent | Training/optimization |
+| `evaluation_validation` | EvaluationValidationAgent | Evaluation/validation |
+| `deployment_monitoring` | DeploymentMonitoringAgent | Deployment/monitoring |
 
-## 워크플로우 템플릿
+## Workflow Templates
 
 ### ML Pipeline
 
@@ -344,7 +344,7 @@ orchestrator = MultiAgentOrchestrator()
 result = await orchestrator.execute_workflow(
     template="ml_pipeline",
     parameters={
-        "requirements": "고객 이탈 예측 모델",
+        "requirements": "Customer churn prediction model",
         "data_sources": ["/data/customers.csv"]
     }
 )
@@ -356,92 +356,92 @@ result = await orchestrator.execute_workflow(
 result = await orchestrator.execute_workflow(
     template="web_development",
     parameters={
-        "requirements": "REST API + React 프론트엔드"
+        "requirements": "REST API + React frontend"
     }
 )
 ```
 
-## TOC (제약이론) 기반 최적화
+## TOC (Theory of Constraints) Based Optimization
 
-### 병목 탐지
+### Bottleneck Detection
 
-시스템은 다음과 같은 병목을 자동으로 탐지합니다:
+The system automatically detects the following bottlenecks:
 
-- **Agent Capacity**: 에이전트 용량 부족
-- **Work Dependency**: 작업 의존성으로 인한 대기
-- **Token Limit**: 토큰 사용량 한계
-- **Queue Overflow**: 큐 오버플로우
-- **Imbalanced Load**: 부하 불균형
+- **Agent Capacity**: Insufficient agent capacity
+- **Work Dependency**: Waiting due to task dependencies
+- **Token Limit**: Token usage limit
+- **Queue Overflow**: Queue overflow
+- **Imbalanced Load**: Load imbalance
 
-### 최종 분석 및 개선 제안
+### Final Analysis and Improvement Suggestions
 
-모든 Work가 완료되면 TOC Supervisor는 자동으로 다음 분석을 수행합니다:
+After all Works are completed, TOC Supervisor automatically performs the following analysis:
 
-1. **Token 효율 분석**
-   - 예상 vs 실제 토큰 사용량 비교
-   - 작업 타입별 효율 분석
-   - 절감 가능 토큰 계산
-   - 비효율적인 작업 타입 식별
+1. **Token Efficiency Analysis**
+   - Compare expected vs actual token usage
+   - Analyze efficiency by task type
+   - Calculate savable tokens
+   - Identify inefficient task types
 
-2. **에이전트 효율 분석**
-   - 에이전트별 성과 분석
-   - 에이전트 타입별 집계
-   - 성공률, 평균 토큰 사용량, 평균 처리 시간
+2. **Agent Efficiency Analysis**
+   - Analyze performance by agent
+   - Aggregate by agent type
+   - Success rate, average token usage, average processing time
 
-3. **병목 현상 분석**
-   - 에이전트 과부하/과소활용 식별
-   - 에이전트 수 조정 권장
+3. **Bottleneck Analysis**
+   - Identify agent overload/underutilization
+   - Recommend agent count adjustment
 
-4. **개선 제안 생성**
-   - Token 최적화 방안
-   - 에이전트 스케일링 권장
-   - 처리 속도 향상 방안
-   - 프로세스 개선 제안
+4. **Generate Improvement Suggestions**
+   - Token optimization methods
+   - Agent scaling recommendations
+   - Processing speed improvement methods
+   - Process improvement suggestions
 
-### 최종 분석 사용 예시
+### Final Analysis Usage Example
 
 ```python
-# Workflow 실행 완료 후 자동으로 최종 분석 수행
+# Automatically perform final analysis after workflow execution
 result = await orchestrator.execute_workflow(
     works=works,
     template="ml_pipeline",
-    parameters={"requirements": "이미지 분류 모델"}
+    parameters={"requirements": "Image classification model"}
 )
 
-# 콘솔에 TOC 최종 분석 보고서 자동 출력
-# - 작업 요약
-# - Token 효율 분석
-# - 병목 현상 분석
-# - 개선 제안
+# TOC final analysis report is automatically printed to console
+# - Task summary
+# - Token efficiency analysis
+# - Bottleneck analysis
+# - Improvement suggestions
 ```
 
-### 최종 분석 API
+### Final Analysis API
 
 ```python
-# Work 완료 시 기록
+# Record on Work completion
 toc_supervisor.record_work_completion(work, result)
 
-# 최종 분석 생성
+# Generate final analysis
 analysis = await toc_supervisor.generate_final_analysis(completed_works)
 
-# 포맷된 보고서 생성
+# Generate formatted report
 report = toc_supervisor.format_final_report(analysis)
 ```
 
-### 자동 최적화
+### Automatic Optimization
 
 ```python
-# 자동 최적화 활성화
+# Enable automatic optimization
 config = WorkflowConfig(
     enable_toc=True,
-    optimization_interval=60.0,  # 60초마다 최적화
+    optimization_interval=60.0,  # Optimize every 60 seconds
     auto_scale=True
 )
 
 orchestrator = MultiAgentOrchestrator(config)
 ```
 
-### 최적화 리포트
+### Optimization Report
 
 ```python
 report = supervisor.get_optimization_report()
@@ -457,52 +457,52 @@ report = supervisor.get_optimization_report()
 # }
 ```
 
-## RACI 역할 정의
+## RACI Role Definitions
 
-| 역할 | 설명 | 책임 |
+| Role | Description | Responsibility |
 |------|------|------|
-| **R**esponsible | 실행 담당 | 작업 수행, 계획 제출 |
-| **A**ccountable | 최종 책임 | 승인/거부, 계획 검토 |
-| **C**onsulted | 자문 | 의견 제공 |
-| **I**nformed | 정보 수신 | 결과 통보 |
+| **R**esponsible | Execution in charge | Task execution, plan submission |
+| **A**ccountable | Final responsibility | Approval/rejection, plan review |
+| **C**onsulted | Consulting | Provide opinions |
+| **I**nformed | Information reception | Notify results |
 
-## 계획 승인 (Plan Approval) 워크플로우
+## Plan Approval Workflow
 
-개발 작업 실행 전에 RESPONSIBLE 에이전트가 계획과 예상 결과를 보고하고, ACCOUNTABLE 에이전트의 승인을 받는 프로세스입니다.
+A process where the RESPONSIBLE agent reports the plan and expected results before executing development tasks, and receives approval from the ACCOUNTABLE agent.
 
-### 계획 승인 단계
+### Plan Approval Stages
 
-1. **Work 생성 및 RACI 할당**
-   - Work 생성 시 RESPONSIBLE, ACCOUNTABLE 에이전트 지정
-   - `require_plan_approval = True` 설정으로 계획 승인 요구
+1. **Work Creation and RACI Assignment**
+   - Specify RESPONSIBLE, ACCOUNTABLE agents when creating Work
+   - Set `require_plan_approval = True` to require plan approval
 
-2. **계획 제출 (RESPONSIBLE)**
-   - RESPONSIBLE 에이전트가 계획 제출
-   - 계획 내용: 접근 방식, 단계, 예상 파일, 예상 시간, 리스크, 예상 결과
+2. **Plan Submission (RESPONSIBLE)**
+   - RESPONSIBLE agent submits plan
+   - Plan contents: approach, steps, estimated files, estimated time, risks, expected results
 
-3. **계획 검토 및 승인 (ACCOUNTABLE)**
-   - ACCOUNTABLE 에이전트가 계획 검토
-   - 승인 또는 거절 결정
-   - 거절 시 재작성 요청 및 사유 전달
+3. **Plan Review and Approval (ACCOUNTABLE)**
+   - ACCOUNTABLE agent reviews plan
+   - Approve or reject decision
+   - If rejected, request rewrite and provide reason
 
-4. **작업 실행**
-   - 승인된 계획에 따라 작업 실행
-   - 실행 중 문제 발생 시 계획과의 차이점 보고
+4. **Task Execution**
+   - Execute tasks according to approved plan
+   - If issues arise during execution, report differences from plan
 
-### 계획 승인 API
+### Plan Approval API
 
 ```python
-# 계획 승인 요구 설정
+# Set plan approval requirement
 orchestrator.set_work_plan_approval_required(work_id, True)
 
-# 계획 제출 (RESPONSIBLE agent)
+# Plan submission (RESPONSIBLE agent)
 plan_content = {
-    "approach": "FastAPI 사용",
-    "steps": ["1. FastAPI 앱 초기화", "2. Pydantic 모델 정의", ...],
+    "approach": "Use FastAPI",
+    "steps": ["1. Initialize FastAPI app", "2. Define Pydantic models", ...],
     "estimated_files": ["main.py", "models.py"],
     "estimated_hours": 4,
-    "risks": ["데이터베이스 연결 지연"],
-    "expected_results": "GET /api/users 응답 반환"
+    "risks": ["Database connection delay"],
+    "expected_results": "Return GET /api/users response"
 }
 submit_result = orchestrator.submit_work_plan(
     work_id=work.work_id,
@@ -510,59 +510,59 @@ submit_result = orchestrator.submit_work_plan(
     proposed_by="dev_agent_1"
 )
 
-# 계획 승인 (ACCOUNTABLE agent)
+# Plan approval (ACCOUNTABLE agent)
 approve_result = orchestrator.approve_work_plan(
     work_id=work.work_id,
     approved_by="senior_agent_1"
 )
 
-# 계획 거절 (ACCOUNTABLE agent)
+# Plan rejection (ACCOUNTABLE agent)
 reject_result = orchestrator.reject_work_plan(
     work_id=work.work_id,
     rejected_by="senior_agent_1",
-    reason="계획이 너무 부족합니다. 더 상세한 단계 필요."
+    reason="The plan is too insufficient. More detailed steps needed."
 )
 
-# 계획 상태 조회
+# Check plan status
 plan_status = orchestrator.get_work_plan_status(work_id)
 ```
 
-### WorkStatus 추가
+### Additional WorkStatus
 
-- `PLAN_SUBMITTED`: 계획이 제출됨 (ACCOUNTABLE 승인 대기)
-- `PLAN_APPROVED`: 계획이 승인됨 (작업 실행 가능)
+- `PLAN_SUBMITTED`: Plan has been submitted (waiting for ACCOUNTABLE approval)
+- `PLAN_APPROVED`: Plan has been approved (task can be executed)
 
-### PlanStatus 열거형
+### PlanStatus Enumeration
 
-- `NOT_REQUIRED`: 계획 승인 불필요
-- `PENDING`: 승인 대기 중
-- `APPROVED`: 승인됨
-- `REJECTED`: 거절됨
+- `NOT_REQUIRED`: Plan approval not required
+- `PENDING`: Waiting for approval
+- `APPROVED`: Approved
+- `REJECTED`: Rejected
 
-## 문서화 표준
+## Documentation Standards
 
-### 문서 유형
+### Document Types
 
-- `PROBLEM_DEFINITION`: 문제 정의서
-- `PROJECT_PLAN`: 프로젝트 계획서
-- `DATA_SPECIFICATION`: 데이터 명세서
-- `ARCHITECTURE_DESIGN`: 아키텍처 설계서
-- `MODEL_EVALUATION`: 모델 평가 보고서
-- `DEPLOYMENT_GUIDE`: 배포 가이드
-- `WORK_SUMMARY`: 작업 요약
+- `PROBLEM_DEFINITION`: Problem definition document
+- `PROJECT_PLAN`: Project plan document
+- `DATA_SPECIFICATION`: Data specification document
+- `ARCHITECTURE_DESIGN`: Architecture design document
+- `MODEL_EVALUATION`: Model evaluation report
+- `DEPLOYMENT_GUIDE`: Deployment guide
+- `WORK_SUMMARY`: Task summary
 
-## 디렉토리 구조
+## Directory Structure
 
 ```
 agents/
 ├── core/
 │   ├── __init__.py
-│   ├── work.py           # Work, WorkQueue 정의
-│   ├── raci.py           # RACI 매트릭스
-│   ├── documentation.py  # 문서화 시스템
-│   ├── agent_pool.py     # 에이전트 풀 관리
-│   ├── toc_supervisor.py # TOC 총괄 에이전트
-│   └── orchestrator.py   # 메인 오케스트레이터
+│   ├── work.py           # Work, WorkQueue definition
+│   ├── raci.py           # RACI matrix
+│   ├── documentation.py  # Documentation system
+│   ├── agent_pool.py     # Agent pool management
+│   ├── toc_supervisor.py # TOC general agent
+│   └── orchestrator.py   # Main orchestrator
 ├── coordinator/
 │   ├── agent.py
 │   └── AGENT.md
@@ -587,92 +587,92 @@ agents/
 └── MCP_README.md
 ```
 
-### 계획 승인 (Plan Approval) 기능
+### Plan Approval Functionality
 
-- **RESPONSIBLE 에이전트**: 작업 실행 전 계획 제출
-  - 접근 방식
-  - 실행 단계
-  - 예상 파일
-  - 예상 소요 시간
-  - 리스크 식별
-  - 예상 결과
+- **RESPONSIBLE Agent**: Submit plan before task execution
+   - Approach
+   - Execution steps
+   - Estimated files
+   - Estimated time
+   - Risk identification
+   - Expected results
 
-- **ACCOUNTABLE 에이전트**: 계획 검토 및 승인/거절
-  - 계획의 명확성 검토
-  - 현실성 확인
-  - 승인: 작업 진행 허가
-  - 거절: 수정 요청 및 사유 제공
+- **ACCOUNTABLE Agent**: Review plan and approve/reject
+   - Review plan clarity
+   - Verify feasibility
+   - Approve: Allow task progress
+   - Reject: Request revision and provide reason
 
-### TOC 최종 분석 (Final Analysis) 기능
+### TOC Final Analysis Functionality
 
-모든 Work 완료 후 자동으로 다음 분석 수행:
+Automatically perform the following analysis after all Work completions:
 
-1. **Token 효율 분석**
-   - 예상 vs 실제 토큰 비교
-   - 작업 타입별 효율 분석
-   - 절감 가능 토큰 계산
-   - 비효율적인 작업 타입 식별
+1. **Token Efficiency Analysis**
+   - Compare expected vs actual tokens
+   - Analyze efficiency by task type
+   - Calculate savable tokens
+   - Identify inefficient task types
 
-2. **에이전트 효율 분석**
-   - 에이전트별 성과 분석
-   - 성공률, 평균 토큰 사용량, 평균 처리 시간
-   - 과부하/과소활용 식별
+2. **Agent Efficiency Analysis**
+   - Analyze performance by agent
+   - Success rate, average token usage, average processing time
+   - Identify overload/underutilization
 
-3. **병목 현상 분석**
-   - 에이전트 수 조정 권장
-   - 과부하: 에이전트 추가 필요
-   - 과소활용: 에이전트 감축 필요
+3. **Bottleneck Analysis**
+   - Recommend agent count adjustment
+   - Overload: More agents needed
+   - Underutilization: Reduce agents
 
-4. **개선 제안 자동 생성**
-   - Token 최적화 방안 (프롬프트 간소화, context 재사용)
-   - 에이전트 스케일링 권장
-   - 처리 속도 향상 방안
-   - 성능 개선 제안
+4. **Automatically Generate Improvement Suggestions**
+   - Token optimization methods (prompt simplification, context reuse)
+   - Agent scaling recommendations
+   - Processing speed improvement methods
+   - Performance improvement suggestions
 
-### 주요 추가 API
+### Key Additional APIs
 
 ```python
-# 계획 승인
+# Plan approval
 orchestrator.set_work_plan_approval_required(work_id, True)
 orchestrator.submit_work_plan(work_id, plan_content, responsible_agent)
 orchestrator.approve_work_plan(work_id, accountable_agent)
 orchestrator.reject_work_plan(work_id, accountable_agent, reason)
 plan_status = orchestrator.get_work_plan_status(work_id)
 
-# TOC 최종 분석
+# TOC final analysis
 analysis = await toc_supervisor.generate_final_analysis(completed_works)
 report = toc_supervisor.format_final_report(analysis)
 
-# 데이터 저장
+# Data storage
 await toc_supervisor.save_final_analysis(analysis)
 comparison = await toc_supervisor.compare_with_baselines()
 
-# MCP 세션 설정
+# MCP session setup
 orchestrator.set_mcp_sessions(
     memory_session=memory_client,
     filesystem_session=filesystem_client
 )
 ```
 
-## Skill 시스템 추가 기능
+## Additional Skill System Features
 
-### Skill 검색 및 로드
+### Skill Search and Loading
 
 ```python
-# 특정 skill 로드
+# Load specific skill
 skill_content = await orchestrator.skill_manager.get_skill_content("design-development-skill")
 
-# 여러 skill 로드
+# Load multiple skills
 skills = await orchestrator.skill_manager.load_all_skills([
     "design-development-skill",
     "deployment-monitoring-skill"
 ])
 ```
 
-### Work의 Skill 정보 조회
+### Get Work Skill Information
 
 ```python
-# Work에 할당된 skill 정보 조회
+# Get skill information assigned to Work
 skill_info = await orchestrator.get_work_skills(work.work_id)
 
 print(skill_info["required_skills"])
@@ -680,16 +680,16 @@ print(skill_info["skill_assignments"])
 print(skill_info["skill_content"])
 ```
 
-### Skill Effectiveness 조회
+### Get Skill Effectiveness
 
 ```python
-# 전체 skill effectiveness
+# All skill effectiveness
 all_effectiveness = orchestrator.skill_manager.get_all_skill_effectiveness()
 
-# 특정 skill effectiveness
+# Specific skill effectiveness
 skill_metrics = orchestrator.skill_manager.get_skill_effectiveness("design-development-skill")
 
-# 결과
+# Result
 # {
 #   "usage_count": 25,
 #   "success_rate": 0.98,
@@ -699,87 +699,86 @@ skill_metrics = orchestrator.skill_manager.get_skill_effectiveness("design-devel
 # }
 ```
 
-### MCP 툴을 통한 Skill 할당
+### Skill Assignment via MCP Tools
 
-agent-factory MCP 서버는 다음 툴을 제공합니다:
+The agent-factory MCP server provides the following tools:
 
-| 툴 이름 | 설명 | 입력 |
+| Tool Name | Description | Input |
 |---------|------|------|
-| `agent-factory_define_problem` | 문제 정의 | requirements |
-| `agent-factory_collect_data` | 데이터 수집 | sources |
-| `agent-factory_preprocess_data` | 데이터 전처리 | data_path |
-| `agent-factory_design_architecture` | 아키텍처 설계 | problem_def |
-| `agent-factory_generate_implementation` | 구현 코드 생성 | architecture |
-| `agent-factory_optimize_process` | 프로세스 최적화 | config |
-| `agent-factory_evaluate_results` | 결과 평가 | output_path, test_data_path |
-| `agent-factory_deploy_system` | 시스템 배포 | artifact_path, config |
-| `agent-factory_monitor_system` | 시스템 모니터링 | version |
-| `analyze_work_for_skills` | Work 분석 및 Skill 추천 | work_name, work_description, work_type, tags |
-| `assign_skills_to_work` | Work에 Skill 할당 | work_id, consultant_agent_id |
-| `get_work_skills` | Work의 Skill 정보 조회 | work_id |
-| `get_skill_effectiveness` | Skill 효과 메트릭 조회 | skill_name (optional) |
+| `agent-factory_define_problem` | Define problem | requirements |
+| `agent-factory_collect_data` | Collect data | sources |
+| `agent-factory_preprocess_data` | Preprocess data | data_path |
+| `agent-factory_design_architecture` | Design architecture | problem_def |
+| `agent-factory_generate_implementation` | Generate implementation code | architecture |
+| `agent-factory_optimize_process` | Optimize process | config |
+| `agent-factory_evaluate_results` | Evaluate results | output_path, test_data_path |
+| `agent-factory_deploy_system` | Deploy system | artifact_path, config |
+| `agent-factory_monitor_system` | Monitor system | version |
+| `analyze_work_for_skills` | Analyze work and recommend skills | work_name, work_description, work_type, tags |
+| `assign_skills_to_work` | Assign skills to work | work_id, consultant_agent_id |
+| `get_work_skills` | Get work skill information | work_id |
+| `get_skill_effectiveness` | Get skill effectiveness metrics | skill_name (optional) |
 
-이 툴들은 각 skill의 allowed-tools 설정을 통해 제한됩니다.
+These tools are restricted through allowed-tools settings of each skill.
 
-### Skill 시스템 도입
+### Introduction of Skill System
 
-**동적 Skill 할당**:
-- Work 마다 자동으로 적절한 skill을 추천하고 할당
-- Work 내용(description, tags, inputs)을 분석하여 skill 추천
-- Consulted 역할이 skill 할당을 검토하고 조정 가능
+**Dynamic Skill Assignment**:
+- Automatically recommend and assign appropriate skills to each Work
+- Analyze Work content (description, tags, inputs) to recommend skills
+- Consulted role can review and adjust skill assignments
 
-**RACI 기반 Skill 배분**:
-- 각 RACI 역할에 맞는 skill 카테고리 자동 할당
-  - **Responsible**: CORE, SPECIALIZED skill (주요 작업 수행)
-  - **Accountable**: CORE, QUALITY skill (승인 및 품질 보증)
-  - **Consulted**: SUPPORT, SPECIALIZED, QUALITY skill (자문 및 검토)
-  - **Informed**: SUPPORT skill (정보 수신)
+**RACI-Based Skill Distribution**:
+- Automatically assign skill categories matching each RACI role
+   - **Responsible**: CORE, SPECIALIZED skills (main task execution)
+   - **Accountable**: CORE, QUALITY skills (approval and quality assurance)
+   - **Consulted**: SUPPORT, SPECIALIZED, QUALITY skills (consulting and review)
+   - **Informed**: SUPPORT skills (information reception)
 
-**Skill Effectiveness 모니터링**:
-- TOC Supervisor가 skill 효과를 실시간으로 모니터링
-- 메트릭: 사용 횟수, 성공률, 평균 토큰, 평균 소요 시간, 효율 점수
-- 자동으로 skill 개선/최적화/유지 권장사항 생성
+**Skill Effectiveness Monitoring**:
+- TOC Supervisor monitors skill effectiveness in real-time
+- Metrics: usage count, success rate, average tokens, average time, efficiency score
+- Automatically generate skill improvement/optimization/maintenance recommendations
 
 **SkillAnalyzer**:
-- Work를 분석하여 적절한 skill 추천
-- 키워드 매칭, work type 매핑, tag 분석, inputs 분석
-- 신뢰도(confidence) 점수로 정렬
+- Analyze Work to recommend appropriate skills
+- Keyword matching, work type mapping, tag analysis, inputs analysis
+- Sort by confidence score
 
 **SkillManager**:
-- SKILL.md 파일 로드 및 관리
-- Skill effectiveness 기록 및 추적
-- Skill content를 agent에 주입
+- Load and manage SKILL.md files
+- Record and track skill effectiveness
+- Inject skill content into agents
 
-### TOC 최종 분석 (Final Analysis) 기능 - Skill 확장
+### TOC Final Analysis Functionality - Skill Extension
 
-모든 Work 완료 후 자동으로 다음 분석 수행:
+Automatically perform the following analysis after all Work completions:
 
-1. **Token 효율 분석**
-   - 예상 vs 실제 토큰 비교
-   - 작업 타입별 효율 분석
-   - 절감 가능 토큰 계산
-   - 비효율적인 작업 타입 식별
+1. **Token Efficiency Analysis**
+   - Compare expected vs actual tokens
+   - Analyze efficiency by task type
+   - Calculate savable tokens
+   - Identify inefficient task types
 
-2. **에이전트 효율 분석**
-   - 에이전트별 성과 분석
-   - 성공률, 평균 토큰 사용량, 평균 처리 시간
-   - 과부하/과소활용 식별
+2. **Agent Efficiency Analysis**
+   - Analyze performance by agent
+   - Success rate, average token usage, average processing time
+   - Identify overload/underutilization
 
-3. **Skill Effectiveness 분석** (신규)
-   - 전체 skill 사용 현황
-   - Skill별 성공률 및 효율 점수
-   - 최고/최저 성능 skill 식별
-   - Work 타입별 skill 사용 패턴 분석
-   - Skill 개선/최적화 권장사항 생성
+3. **Skill Effectiveness Analysis** (New)
+   - Overall skill usage status
+   - Success rate and efficiency score by skill
+   - Identify best/worst performing skills
+   - Analyze skill usage patterns by work type
+   - Generate skill improvement/optimization recommendations
 
-4. **병목 현상 분석**
-   - 에이전트 수 조정 권장
-   - 과부하: 에이전트 추가 필요
-   - 과소활용: 에이전트 감축 필요
+4. **Bottleneck Analysis**
+   - Recommend agent count adjustment
+   - Overload: More agents needed
+   - Underutilization: Reduce agents
 
-5. **개선 제안 자동 생성**
-   - Token 최적화 방안 (프롬프트 간소화, context 재사용)
-   - 에이전트 스케일링 권장
-   - 처리 속도 향상 방안
-   - **Skill 최적화 방안** (비효율적 skill 개선, underutilized skill 제거)
-
+5. **Automatically Generate Improvement Suggestions**
+   - Token optimization methods (prompt simplification, context reuse)
+   - Agent scaling recommendations
+   - Processing speed improvement methods
+   - **Skill optimization methods** (improve inefficient skills, remove underutilized skills)

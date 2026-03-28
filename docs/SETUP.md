@@ -6,43 +6,43 @@
 - PostgreSQL: 15-alpine (Optional - for database features)
 - Database Password: whiteduck (default, can be changed in .env)
 
-**참고**: PostgreSQL은 선택적입니다. Docker Compose, Docker, 또는 시스템 설치 중 하나를 선택할 수 있습니다.
+**Note**: PostgreSQL is optional. You can choose from Docker Compose, Docker, or system installation. Even without installation, MCP server and agent functionality will work normally.
 
 ## PostgreSQL (Optional)
 
-PostgreSQL은 **선택적** 구성 요소입니다. 설치되지 않아도 MCP 서버와 에이전트 기능은 정상 작동합니다.
+PostgreSQL is an **optional** component. MCP server and agent functionality will work normally even if not installed.
 
-### PostgreSQL이 필요한 기능
-- **데이터베이스 저장**: 배포 정보, 성능 메트릭, 학습 로그 저장
-- **데이터 지속성**: 작업 결과, 평가 결과 영구 저장
+### Features Requiring PostgreSQL
+- **Database Storage**: Store deployment information, performance metrics, training logs
+- **Data Persistence**: Permanent storage of task results, evaluation results
 
-### PostgreSQL이 없어도 되는 기능
-- ✅ MCP 서버 동작
-- ✅ 에이전트 간 통신
-- ✅ 워크플로우 실행
-- ✅ 파일 시스템 액세스
-- ✅ 기억 저장
+### Features Working Without PostgreSQL
+- ✅ MCP server operation
+- ✅ Inter-agent communication
+- ✅ Workflow execution
+- ✅ File system access
+- ✅ Memory storage
 
-### PostgreSQL 설치 방법
+### PostgreSQL Installation Methods
 
-#### 방법 1: Docker Compose (권장)
+#### Method 1: Docker Compose (Recommended)
 
 ```bash
 cd <agent_factory_directory>
 
-# PostgreSQL 시작
+# Start PostgreSQL
 docker compose up -d
 
-# PostgreSQL 중지
+# Stop PostgreSQL
 docker compose down
 ```
 
-**장점**:
-- 간단하고 빠른 설치
-- 데이터 볼륨으로 영속성 보장
-- `docker-compose.yml` 포함됨
+**Advantages**:
+- Simple and fast installation
+- Data volume ensures persistence
+- `docker-compose.yml` included
 
-#### 방법 2: Docker (대안)
+#### Method 2: Docker (Alternative)
 
 ```bash
 docker run -d \
@@ -53,7 +53,7 @@ docker run -d \
   postgres:15-alpine
 ```
 
-#### 방법 3: 시스템 설치
+#### Method 3: System Installation
 
 ```bash
 # Ubuntu/Debian
@@ -65,31 +65,31 @@ sudo systemctl start postgresql
 brew install postgresql
 brew services start postgresql
 
-# 설정
+# Configuration
 sudo -u postgres psql -c "CREATE DATABASE monitoring;"
 sudo -u postgres psql -c "CREATE DATABASE training;"
 sudo -u postgres psql -c "CREATE DATABASE evaluation;"
 ```
 
-### PostgreSQL 없이 실행
+### Running Without PostgreSQL
 
-PostgreSQL이 설치되어 있지 않아도 시스템은 작동합니다:
+The system works normally even if PostgreSQL is not installed:
 
 ```bash
-# 설치 (DB 없이)
+# Installation (without DB)
 cd <agent_factory_directory>
 ./setup-mcp.sh
 
-# 출력될 메시지:
+# Message displayed:
 # ⚠ PostgreSQL not found (neither systemctl nor docker)
 #   Running without database support
 # ✓ Dependencies installed
 # ✓ OpenCode MCP configuration created
 ```
 
-### 데이터베이스 구성
+### Database Configuration
 
-**PostgreSQL 데이터베이스** (선택적):
+**PostgreSQL Databases** (optional):
 - `data` - Raw and processed data storage
 - `training` - Processing checkpoints and logs
 - `evaluation` - Evaluation metrics and results
@@ -123,28 +123,28 @@ cd <agent_factory_directory>
 
 ## Examples
 
-모든 예제는 `examples/` 디렉토리에 있습니다:
+All examples are in the `examples/` directory:
 
-- `work_agent_statistics_example.py` - Work-Agent 통계 예제 (신규)
-- `basic_usage.py` - 기본 사용 예제
-- `plan_approval_example.py` - 계획 승인 워크플로우 예제 1
-- `plan_approval_example2.py` - 계획 승인 워크플로우 예제 2
-- `toc_analysis_example.py` - TOC 최종 분석 예제
-- `toc_optimization_example.py` - TOC 최적화 예제
-- `raci_example.py` - RACI 매트릭스 예제
-- `documentation_example.py` - 문서화 예제
-- `workflow_templates_example.py` - 워크플로우 템플릿 예제
+- `work_agent_statistics_example.py` - Work-Agent statistics example (New)
+- `basic_usage.py` - Basic usage example
+- `plan_approval_example.py` - Plan approval workflow example 1
+- `plan_approval_example2.py` - Plan approval workflow example 2
+- `toc_analysis_example.py` - TOC final analysis example
+- `toc_optimization_example.py` - TOC optimization example
+- `raci_example.py` - RACI matrix example
+- `documentation_example.py` - Documentation example
+- `workflow_templates_example.py` - Workflow template example
 
-### 예제 실행
+### Running Examples
 
 ```bash
 cd <agent_factory_directory>
 source venv/bin/activate
 
-# 예제 실행
+# Run example
 python examples/work_agent_statistics_example.py
 python examples/basic_usage.py
-# ... 기타 예제들
+# ... other examples
 ```
 
 ## Usage
@@ -154,8 +154,8 @@ python examples/basic_usage.py
 cd <agent_factory_directory>
 source venv/bin/activate
 
-# Run a specific agent
-./run.sh coordinator "고객 관리 웹 앱 개발"
+# Run specific agent
+./run.sh coordinator "Build customer management web app"
 
 # Or run individual agents
 ./run.sh problem_definition
@@ -167,56 +167,56 @@ source venv/bin/activate
 cd <agent_factory_directory>
 source venv/bin/activate
 
-# 계획 승인 예제 실행
+# Run plan approval example
 python examples/plan_approval_example2.py
 ```
 
 ### Option 3: MCP Server (Recommended for OpenCode)
 
-#### PostgreSQL 없이 실행 (빠른 시작)
+#### Running Without PostgreSQL (Quick Start)
 
 ```bash
 cd <agent_factory_directory>
 source venv/bin/activate
 
-# MCP 서버 시작 (DB 없이)
+# Start MCP server (without DB)
 python -m agent_factory.mcp_server
 ```
 
-#### PostgreSQL 포함하여 실행 (권장)
+#### Running With PostgreSQL (Recommended)
 
 ```bash
-# 방법 1: Docker Compose (가장 쉬운 방법)
+# Method 1: Docker Compose (easiest way)
 cd <agent_factory_directory>
 docker compose up -d
 source venv/bin/activate
 python -m agent_factory.mcp_server
 
-# 방법 2: 자동 설치 스크립트
+# Method 2: Automatic installation script
 cd <agent_factory_directory>
 ./setup-mcp.sh
 source venv/bin/activate
 python -m agent_factory.mcp_server
 
-# 방법 3: OpenCode 통합
+# Method 3: OpenCode integration
 cd <agent_factory_directory>
 ./opencode-integrate.sh
-# OpenCode 재시작하여 MCP 서버 자동 로드
+# Restart OpenCode to automatically load MCP server
 ```
 
-### PostgreSQL 설정 (선택적)
+### PostgreSQL Configuration (Optional)
 
-PostgreSQL을 사용하려면 `.env` 파일에 비밀번호를 설정하세요:
+If you want to use PostgreSQL, set the password in the `.env` file:
 
 ```bash
-# .env 파일 생성 또는 수정
+# Create or modify .env file
 echo "DB_PASSWORD=your_password" >> .env
 
-# Docker Compose 사용 시
+# When using Docker Compose
 docker compose up -d
 ```
 
-**기본 비밀번호**: `whiteduck`
+**Default Password**: `whiteduck`
 
 ## MCP Server Features
 
@@ -252,9 +252,9 @@ This system supports various development workflows:
 ## Environment Variables
 
 - `DB_PASSWORD=whiteduck` (set in <agent_factory_directory>/.env, Optional)
-  - PostgreSQL 비밀번호
-  - PostgreSQL 사용 시에만 필요
-  - `.env` 파일에 설정 또는 환경 변수로 전달
+  - PostgreSQL password
+  - Only needed when using PostgreSQL
+  - Set in .env file or pass as environment variable
 
 ## MCP Servers Used by Agents
 - **filesystem** - File system access (Always available)
@@ -264,58 +264,58 @@ This system supports various development workflows:
 - **sequential-thinking** - Enhanced reasoning (processing) (Optional)
 - **git** - Git version control (Optional, requires Git)
 
-### 필수 vs 선택적 서버
+### Required vs Optional Servers
 
-| MCP 서버 | 필수 | 설명 |
-|------------|-------|------|
-| filesystem | ✅ 필수 | 파일 읽기/쓰기 |
-| fetch | ✅ 필수 | 웹 요청, 데이터 다운로드 |
-| memory | ✅ 필수 | 기억 저장, 캐시 |
-| postgres | ⚠ 선택적 | 데이터베이스 저장, 메트릭 저장 |
-| sequential-thinking | ⚠ 선택적 | 향상된 추론 |
-| git | ⚠ 선택적 | 버전 컨트롤 |
+| MCP Server | Required | Description |
+|------------|----------|-------------|
+| filesystem | ✅ Required | File read/write |
+| fetch | ✅ Required | Web requests, data download |
+| memory | ✅ Required | Memory storage, cache |
+| postgres | ⚠ Optional | Database storage, metrics storage |
+| sequential-thinking | ⚠ Optional | Enhanced reasoning |
+| git | ⚠ Optional | Version control |
 
-## 최신 업데이트
+## Latest Updates
 
-### 추가 기능
+### Added Features
 
-1. **Work-Agent 통계 (Work-Agent Statistics)**
-    - Work별로 어떤 Agent들이 얼마나 작업했는지 통계 제공
-    - 토큰 사용, 작업 시간, 에이전트 타입별 분석
-    - API:
-        - `toc.get_work_agent_statistics(work_id)` - 특정 Work 통계
-        - `toc.get_work_agent_statistics()` - 전체 통계
-        - `toc.format_work_agent_report(work_id)` - 형식화된 보고서
-    - 예제: `examples/work_agent_statistics_example.py`
+1. **Work-Agent Statistics**
+     - Provides statistics on which agents worked how much for each work
+     - Token usage, task time, analysis by agent type
+     - API:
+         - `toc.get_work_agent_statistics(work_id)` - Specific work statistics
+         - `toc.get_work_agent_statistics()` - Overall statistics
+         - `toc.format_work_agent_report(work_id)` - Formatted report
+     - Example: `examples/work_agent_statistics_example.py`
 
-2. **계획 승인 (Plan Approval)**
-    - RESPONSIBLE 에이전트가 계획을 제출하는 기능
-    - ACCOUNTABLE 에이전트가 계획을 승인/거절하는 기능
-    - 계획 내용: 접근 방식, 단계, 예상 시간, 리스크, 예상 결과
-    - 예제: `examples/plan_approval_example.py`, `examples/plan_approval_example2.py`
+2. **Plan Approval**
+     - Function for RESPONSIBLE agent to submit plan
+     - Function for ACCOUNTABLE agent to approve/reject plan
+     - Plan contents: approach, steps, estimated time, risks, expected results
+     - Examples: `examples/plan_approval_example.py`, `examples/plan_approval_example2.py`
 
-3. **TOC 최종 분석 (Final Analysis)**
-    - 모든 Work 완료 후 자동 분석
-    - Token 효율 분석 (예상 vs 실제)
-    - 에이전트 효율 분석
-    - 병목 현상 분석
-    - 개선 제안 자동 생성
-    - 예제: `examples/toc_analysis_example.py`, `examples/toc_optimization_example.py`
+3. **TOC Final Analysis**
+     - Automatic analysis after all Work completions
+     - Token efficiency analysis (expected vs actual)
+     - Agent efficiency analysis
+     - Bottleneck analysis
+     - Automatic improvement suggestions generation
+     - Examples: `examples/toc_analysis_example.py`, `examples/toc_optimization_example.py`
 
-4. **선택적 PostgreSQL 지원**
-    - PostgreSQL은 선택적 구성 요소
-    - 설치되지 않아도 MCP 서버와 에이전트 기능 정상 작동
-    - PostgreSQL이 필요한 기능:
-        - 데이터베이스 저장 (배포 정보, 성능 메트릭)
-        - 데이터 지속성
-    - 설치 방법:
-        - Docker Compose (권장): `docker compose up -d`
-        - Docker: `docker run -d -p 5432:5432 postgres:15-alpine`
-        - 시스템: `sudo apt install postgresql`
+4. **Optional PostgreSQL Support**
+     - PostgreSQL is an optional component
+     - MCP server and agent functionality work normally even if not installed
+     - Features requiring PostgreSQL:
+         - Database storage (deployment information, performance metrics)
+         - Data persistence
+     - Installation methods:
+         - Docker Compose (recommended): `docker compose up -d`
+         - Docker: `docker run -d -p 5432:5432 postgres:15-alpine`
+         - System: `sudo apt install postgresql`
 
-### 추가 예제
+### Additional Examples
 
-- `examples/work_agent_statistics_example.py` - Work-Agent 통계 예제
-- `examples/plan_approval_example2.py` - 계획 승인 워크플로우 예제
-- `examples/toc_analysis_example.py` - TOC 최종 분석 예제
-- `examples/toc_optimization_example.py` - TOC 최적화 예제
+- `examples/work_agent_statistics_example.py` - Work-Agent statistics example
+- `examples/plan_approval_example2.py` - Plan approval workflow example
+- `examples/toc_analysis_example.py` - TOC final analysis example
+- `examples/toc_optimization_example.py` - TOC optimization example

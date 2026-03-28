@@ -1,45 +1,45 @@
 # Agent-Factory - MCP Server
 
-Work 기반 멀티 에이전트 자동화 플랫폼 - TOC (제약이론) 기반 최적화, RACI 매트릭스, 자동 문서화 지원
+Work-based Multi-Agent Automation Platform - TOC (Theory of Constraints) Based Optimization, RACI Matrix, Automatic Documentation Support
 
-## 빠른 시작
+## Quick Start
 
-### 설치
+### Installation
 
-**방법 1: 전체 설치 (PostgreSQL 포함)**
+**Method 1: Full Installation (Including PostgreSQL)**
 
 ```bash
 cd <agent_factory_directory>
 ./setup-mcp.sh
 ```
 
-PostgreSQL은 다음 세 가지 방법으로 실행됩니다:
-1. **Docker Compose** (권장): `docker-compose.yml` 파일 사용
-2. **Docker**: `docker run` 명령으로 실행
-3. **System**: 시스템 PostgreSQL 서비스 (설치되어 있는 경우)
+PostgreSQL runs in following three ways:
+1. **Docker Compose** (Recommended): Use `docker-compose.yml` file
+2. **Docker**: Run with `docker run` command
+3. **System**: System PostgreSQL service (if installed)
 
-PostgreSQL이 설치되어 있지 않으면 경고가 표시되고, 데이터베이스 없이도 실행됩니다.
+If PostgreSQL is not installed, a warning is displayed, and it runs without database.
 
 ---
 
-**방법 2: Docker Compose로 PostgreSQL 실행 (권장)**
+**Method 2: Run PostgreSQL with Docker Compose (Recommended)**
 
 ```bash
 cd <agent_factory_directory>
 
-# Docker Compose로 PostgreSQL 시작
+# Start PostgreSQL with Docker Compose
 docker compose up -d
 
-# 또는 docker-compose (구버전)
+# Or docker-compose (old version)
 docker-compose up -d
 
-# PostgreSQL 중지
+# Stop PostgreSQL
 docker compose down
 ```
 
 ---
 
-**방법 3: Docker로 PostgreSQL 실행**
+**Method 3: Run PostgreSQL with Docker**
 
 ```bash
 docker run -d \
@@ -52,58 +52,58 @@ docker run -d \
 
 ---
 
-**방법 4: 시스템 PostgreSQL 사용**
+**Method 4: Use System PostgreSQL**
 
 ```bash
-# PostgreSQL 설치 (Ubuntu/Debian)
+# PostgreSQL installation (Ubuntu/Debian)
 sudo apt install postgresql postgresql-contrib
 
-# PostgreSQL 시작
+# Start PostgreSQL
 sudo systemctl start postgresql
 ```
 
 ---
 
-**설치 후 설정**
+**Configuration After Installation**
 
 ```bash
-# MCP 서버 테스트
+# Test MCP server
 source venv/bin/activate
 python -m agent_factory.mcp_server
 
-# 또는 OpenCode에서 자동 로드됨
+# Or automatically loaded in OpenCode
 ```
 
-### OpenCode에서 사용하기
+### Using in OpenCode
 
-MCP 서버는 자동으로 OpenCode에 연결됩니다:
+The MCP server is automatically connected to OpenCode:
 
-1. OpenCode 설정: `~/.config/opencode/mcp.json`
-2. 자동으로 모든 툴 로드됨
+1. OpenCode configuration: `~/.config/opencode/mcp.json`
+2. All tools are automatically loaded
 
-## 시스템 아키텍처
+## System Architecture
 
-### 핵심 구성 요소
+### Core Components
 
-| 구성 요소 | 설명 |
-|-----------|------|
-| **Work Queue** | 작업(WORK) 단위 큐잉 및 관리 |
-| **Agent Pool** | 다중 에이전트 배치 및 관리 |
-| **RACI Matrix** | 책임 소재 명확화 (Responsible, Accountable, Consulted, Informed) |
-| **Documentation Manager** | 작업 완료 후 자동 문서 생성 |
-| **TOC Supervisor** | 제약이론 기반 병목 분석 및 최적화 |
+| Component | Description |
+|-----------|-------------|
+| **Work Queue** | Task (WORK) unit queuing and management |
+| **Agent Pool** | Multi-agent deployment and management |
+| **RACI Matrix** | Clarify responsibility (Responsible, Accountable, Consulted, Informed) |
+| **Documentation Manager** | Automatic document generation after task completion |
+| **TOC Supervisor** | Theory of Constraints-based bottleneck analysis and optimization |
 
-### Work 기반 아키텍처
+### Work-Based Architecture
 
-모든 작업이 **Work** 단위로 정의됩니다:
+All tasks are defined in **Work** units:
 
 ```python
 from agent_factory.core import Work, WorkPriority
 
 work = Work(
     work_id="unique_id",
-    name="작업 이름",
-    description="작업 설명",
+    name="Task Name",
+    description="Task Description",
     work_type="design_development",
     agent_type="design_development",
     priority=WorkPriority.HIGH,
@@ -112,9 +112,9 @@ work = Work(
 )
 ```
 
-### 다중 에이전트 배치
+### Multi-Agent Deployment
 
-여러 에이전트 인스턴스를 배치하여 병렬 처리:
+Deploy multiple agent instances for parallel processing:
 
 ```python
 from agent_factory.core import AgentPool, AgentInstance
@@ -129,9 +129,9 @@ agent = AgentInstance(
 pool.register_agent(agent)
 ```
 
-### RACI 매트릭스
+### RACI Matrix
 
-명확한 책임 분담:
+Clear responsibility distribution:
 
 ```python
 from agent_factory.core import RACI, RACIRole
@@ -143,34 +143,34 @@ raci.assign("work_1", "agent_c", RACIRole.CONSULTED)
 raci.assign("work_1", "agent_d", RACIRole.INFORMED)
 ```
 
-## 계획 승인 (Plan Approval)
+## Plan Approval
 
-개발 작업 실행 전에 RESPONSIBLE 에이전트가 계획과 예상 결과를 보고하고, ACCOUNTABLE 에이전트의 승인을 받는 프로세스입니다.
+A process where RESPONSIBLE agent reports plan and expected results before executing development tasks, and receives approval from ACCOUNTABLE agent.
 
-### 계획 승인 워크플로우
+### Plan Approval Workflow
 
 ```
-1. Work 생성 → RACI 할당 (RESPONSIBLE, ACCOUNTABLE)
-2. require_plan_approval = True 설정
-3. RESPONSIBLE agent가 계획 제출
-4. ACCOUNTABLE agent가 계획 검토 후 승인/거절
-5. 승인된 경우에만 작업 실행
+1. Work creation → RACI assignment (RESPONSIBLE, ACCOUNTABLE)
+2. Set require_plan_approval = True
+3. RESPONSIBLE agent submits plan
+4. ACCOUNTABLE agent reviews plan and approves/rejects
+5. Task execution only if approved
 ```
 
-### 계획 승인 API
+### Plan Approval API
 
 ```python
-# 계획 승인 요구 설정
+# Set plan approval requirement
 orchestrator.set_work_plan_approval_required(work_id, True)
 
-# 계획 제출 (RESPONSIBLE agent)
+# Plan submission (RESPONSIBLE agent)
 plan_content = {
-    "approach": "FastAPI 사용",
-    "steps": ["1. FastAPI 앱 초기화", "2. Pydantic 모델 정의", ...],
+    "approach": "Use FastAPI",
+    "steps": ["1. Initialize FastAPI app", "2. Define Pydantic models", ...],
     "estimated_files": ["main.py", "models.py"],
     "estimated_hours": 4,
-    "risks": ["데이터베이스 연결 지연"],
-    "expected_results": "GET /api/users 응답 반환"
+    "risks": ["Database connection delay"],
+    "expected_results": "Return GET /api/users response"
 }
 submit_result = orchestrator.submit_work_plan(
     work_id=work.work_id,
@@ -178,26 +178,26 @@ submit_result = orchestrator.submit_work_plan(
     proposed_by="dev_agent_1"
 )
 
-# 계획 승인 (ACCOUNTABLE agent)
+# Plan approval (ACCOUNTABLE agent)
 approve_result = orchestrator.approve_work_plan(
     work_id=work.work_id,
     approved_by="senior_agent_1"
 )
 
-# 계획 거절 (ACCOUNTABLE agent)
+# Plan rejection (ACCOUNTABLE agent)
 reject_result = orchestrator.reject_work_plan(
     work_id=work.work_id,
     rejected_by="senior_agent_1",
-    reason="계획이 너무 부족합니다."
+    reason="The plan is too insufficient."
 )
 
-# 계획 상태 조회
+# Check plan status
 plan_status = orchestrator.get_work_plan_status(work_id)
 ```
 
-### TOC (제약이론) 최적화
+### TOC (Theory of Constraints) Optimization
 
-병목 식별 및 처리량 최적화:
+Identify bottlenecks and optimize throughput:
 
 ```python
 from agent_factory.core import TOCSupervisor
@@ -207,19 +207,19 @@ analysis = await supervisor.analyze_system()
 optimization = await supervisor.optimize()
 ```
 
-## 에이전트 타입
+## Agent Types
 
-| 에이전트 타입 | Work 타입 | 설명 |
+| Agent Type | Work Type | Description |
 |---------------|-----------|------|
-| `problem_definition` | `problem_definition` | 문제 정의 및 계획 수립 |
-| `data_collection` | `data_collection` | 데이터 수집 및 전처리 |
-| `design_development` | `design_development` | 시스템 설계 및 코드 구현 |
-| `training_optimization` | `training_optimization` | 모델 학습 및 최적화 |
-| `evaluation_validation` | `evaluation_validation` | 모델 평가 및 검증 |
-| `deployment_monitoring` | `deployment_monitoring` | 배포 및 운영 모니터링 |
-| `toc_supervisor` | - | 시스템 최적화 및 총괄 |
+| `problem_definition` | `problem_definition` | Problem definition and planning |
+| `data_collection` | `data_collection` | Data collection and preprocessing |
+| `design_development` | `design_development` | System design and code implementation |
+| `training_optimization` | `training_optimization` | Model training and optimization |
+| `evaluation_validation` | `evaluation_validation` | Model evaluation and validation |
+| `deployment_monitoring` | `deployment_monitoring` | Deployment and operations monitoring |
+| `toc_supervisor` | - | System optimization and general management |
 
-## 워크플로우 템플릿
+## Workflow Templates
 
 ### ML Pipeline
 
@@ -227,7 +227,7 @@ optimization = await supervisor.optimize()
 result = await orchestrator.execute_workflow(
     template="ml_pipeline",
     parameters={
-        "requirements": "고객 이탈 예측 모델",
+        "requirements": "Customer churn prediction model",
         "data_sources": ["/data/customers.csv"]
     }
 )
@@ -239,7 +239,7 @@ result = await orchestrator.execute_workflow(
 result = await orchestrator.execute_workflow(
     template="web_development",
     parameters={
-        "requirements": "REST API + React 프론트엔드"
+        "requirements": "REST API + React frontend"
     }
 )
 ```
@@ -266,97 +266,97 @@ result = await orchestrator.execute_workflow(
 )
 ```
 
-## 문서화
+## Documentation
 
-### 자동 문서화
+### Automatic Documentation
 
 ```python
 config = WorkflowConfig(auto_document=True)
 orchestrator = MultiAgentOrchestrator(config)
 result = await orchestrator.execute_workflow(...)
-print(result.documents)  # 생성된 문서 ID 목록
+print(result.documents)  # List of generated document IDs
 ```
 
-### 문서 타입
+### Document Types
 
-| 문서 타입 | 설명 |
+| Document Type | Description |
 |-----------|------|
-| `PROBLEM_DEFINITION` | 문제 정의서 |
-| `PROJECT_PLAN` | 프로젝트 계획서 |
-| `DATA_SPECIFICATION` | 데이터 명세서 |
-| `ARCHITECTURE_DESIGN` | 아키텍처 설계서 |
-| `MODEL_EVALUATION` | 모델 평가 보고서 |
-| `DEPLOYMENT_GUIDE` | 배포 가이드 |
-| `WORK_SUMMARY` | 작업 요약 |
+| `PROBLEM_DEFINITION` | Problem definition document |
+| `PROJECT_PLAN` | Project plan document |
+| `DATA_SPECIFICATION` | Data specification document |
+| `ARCHITECTURE_DESIGN` | Architecture design document |
+| `MODEL_EVALUATION` | Model evaluation report |
+| `DEPLOYMENT_GUIDE` | Deployment guide |
+| `WORK_SUMMARY` | Task summary |
 
-## TOC 최적화
+## TOC Optimization
 
-### 병목 탐지
+### Bottleneck Detection
 
-시스템은 다음 병목을 자동 탐지:
+The system automatically detects the following bottlenecks:
 
-- **Agent Capacity**: 에이전트 용량 부족
-- **Work Dependency**: 작업 의존성 대기
-- **Token Limit**: 토큰 사용량 한계
-- **Queue Overflow**: 큐 오버플로우
-- **Imbalanced Load**: 부하 불균형
+- **Agent Capacity**: Insufficient agent capacity
+- **Work Dependency**: Waiting due to task dependencies
+- **Token Limit**: Token usage limit
+- **Queue Overflow**: Queue overflow
+- **Imbalanced Load**: Load imbalance
 
-### 최종 분석 및 개선 제안
+### Final Analysis and Improvement Suggestions
 
-모든 Work가 완료되면 TOC Supervisor가 자동으로 최종 분석을 수행합니다.
+After all Works are completed, TOC Supervisor automatically performs final analysis.
 
-#### 분석 내용
+#### Analysis Content
 
-1. **작업 요약**: 전체/완료/실패/성공률
-2. **Token 효율 분석**:
-   - 예상 vs 실제 토큰 사용량 비교
-   - 작업 타입별 효율 분석
-   - 절감 가능 토큰 계산
-   - 비효율적인 작업 타입 식별
+1. **Task Summary**: Total/Completed/Failed/Success rate
+2. **Token Efficiency Analysis**:
+   - Compare expected vs actual token usage
+   - Analyze efficiency by task type
+   - Calculate savable tokens
+   - Identify inefficient task types
 
-3. **에이전트 효율 분석**:
-   - 에이전트별 성과 분석
-   - 에이전트 타입별 집계
-   - 성공률, 평균 토큰 사용량, 평균 처리 시간
+3. **Agent Efficiency Analysis**:
+   - Analyze performance by agent
+   - Aggregate by agent type
+   - Success rate, average token usage, average processing time
 
-4. **병목 현상 분석**:
-   - 에이전트 과부하/과소활용 식별
-   - 에이전트 수 조정 권장
+4. **Bottleneck Analysis**:
+   - Identify agent overload/underutilization
+   - Recommend agent count adjustment
 
-5. **개선 제안**:
-   - Token 최적화 (프롬프트 간소화, context 재사용)
-   - 에이전트 스케일링 권장
-   - 처리 속도 향상 방안
-   - 프로세스 개선 제안
+5. **Improvement Suggestions**:
+   - Token optimization (prompt simplification, context reuse)
+   - Agent scaling recommendations
+   - Processing speed improvement methods
+   - Process improvement suggestions
 
-#### 최종 분석 사용 예시
+#### Final Analysis Usage Example
 
 ```python
-# Workflow 실행 완료 후 자동으로 최종 분석 수행
+# Automatically perform final analysis after workflow execution
 result = await orchestrator.execute_workflow(
     works=works,
     template="ml_pipeline",
-    parameters={"requirements": "이미지 분류 모델"}
+    parameters={"requirements": "Image classification model"}
 )
 
-# 콘솔에 TOC 최종 분석 보고서 자동 출력
-# - 작업 요약
-# - Token 효율 분석
-# - 병목 현상 분석
-# - 개선 제안
-# - 기준 대비 비교
-# - 데이터 저장 위치
+# TOC final analysis report is automatically printed to console
+# - Task summary
+# - Token efficiency analysis
+# - Bottleneck analysis
+# - Improvement suggestions
+# - Comparison with baseline
+# - Data storage location
 ```
 
-#### 데이터 저장 위치
+#### Data Storage Location
 
-TOC Supervisor는 분석 데이터를 두 곳에 저장합니다:
+TOC Supervisor stores analysis data in two locations:
 
-**Memory Storage (MCP memory 서버)**:
-- `toc_baselines` - 기준 메트릭
-- `toc_bottleneck_history` - 병목 현상 기록
-- `toc_optimization_log` - 최적화 로그
-- `toc_work_history` - 작업 기록
+**Memory Storage (MCP memory server)**:
+- `toc_baselines` - Baseline metrics
+- `toc_bottleneck_history` - Bottleneck history
+- `toc_optimization_log` - Optimization log
+- `toc_work_history` - Work history
 
 **Filesystem Storage** (`~/.agents_toc/`):
 - `toc_baselines.json`
@@ -365,34 +365,33 @@ TOC Supervisor는 분석 데이터를 두 곳에 저장합니다:
 - `toc_work_history.json`
 - `toc_final_report_<timestamp>.json`
 
-#### 기준 대비 비교 (Trend Analysis)
+#### Comparison with Baseline (Trend Analysis)
 
 ```python
 comparison = await toc_supervisor.compare_with_baselines()
 
-# 결과:
+# Result:
 {
-    "improvements": [...],   # 개선된 지표
-    "degradations": [...],  # 저하된 지표
-    "stable": [...]         # 안정적 지표
+    "improvements": [...],   # Improved metrics
+    "degradations": [...],  # Degraded metrics
+    "stable": [...]         # Stable metrics
 }
 ```
 
-#### MCP 세션 설정
+#### MCP Session Setup
 
 ```python
 orchestrator.set_mcp_sessions(
     memory_session=memory_client,
     filesystem_session=filesystem_client
 )
-```
-# - 작업 요약
-# - Token 효율 분석
-# - 병목 현상 분석
-# - 개선 제안
+# - Task summary
+# - Token efficiency analysis
+# - Bottleneck analysis
+# - Improvement suggestions
 ```
 
-### 자동 최적화
+### Automatic Optimization
 
 ```python
 config = WorkflowConfig(
@@ -402,7 +401,7 @@ config = WorkflowConfig(
 )
 ```
 
-### 최적화 보고서
+### Optimization Report
 
 ```python
 report = supervisor.get_optimization_report()
@@ -418,107 +417,107 @@ report = supervisor.get_optimization_report()
 # }
 ```
 
-## 사용 예시
+## Usage Examples
 
-### 기본 사용
+### Basic Usage
 
 ```bash
 cd <agents_directory>
 python examples/basic_usage.py
 ```
 
-### 계획 승인 (Plan Approval)
+### Plan Approval
 
 ```bash
 cd <agents_directory>
 python examples/plan_approval_example2.py
 ```
 
-### RACI 매트릭스
+### RACI Matrix
 
 ```bash
 python examples/raci_example.py
 ```
 
-### TOC 최종 분석
+### TOC Final Analysis
 
 ```bash
 cd <agents_directory>
 python examples/toc_analysis_example.py
 ```
 
-### TOC 최적화
+### TOC Optimization
 
 ```bash
 python examples/toc_optimization_example.py
 ```
 
-### 문서화
+### Documentation
 
 ```bash
 python examples/documentation_example.py
 ```
 
-### 워크플로우 템플릿
+### Workflow Templates
 
 ```bash
 python examples/workflow_templates_example.py
 ```
 
-## TOC 총괄 에이전트
+## TOC General Agent
 
 ```bash
-# 시스템 분석
+# System analysis
 python -m agent_factory.toc_supervisor.agent analyze
 
-# 최적화 실행
+# Run optimization
 python -m agent_factory.toc_supervisor.agent optimize
 
-# 병목 현상 확인
+# Check bottlenecks
 python -m agent_factory.toc_supervisor.agent bottlenecks
 
-# TOC 보고서 생성
+# Generate TOC report
 python -m agent_factory.toc_supervisor.agent report
 
-# 자동 모니터링
+# Automatic monitoring
 python -m agent_factory.toc_supervisor.agent monitor
 ```
 
-## 구조
+## Structure
 
 ```
 <agents_directory>/
-├── core/                      # 코어 시스템
+├── core/                      # Core system
 │   ├── work.py                # Work, WorkQueue, WorkPlan, PlanStatus
-│   ├── raci.py                # RACI 매트릭스
-│   ├── documentation.py       # 문서화 시스템
-│   ├── agent_pool.py          # 에이전트 풀
-│   ├── toc_supervisor.py      # TOC 총괄 (최종 분석 포함)
-│   └── orchestrator.py        # 메인 오케스트레이터
-├── coordinator/               # 코디네이터 에이전트
-├── problem_definition/        # 문제 정의 에이전트
-├── data_collection/           # 데이터 수집 에이전트
-├── design_development/        # 설계/개발 에이전트
-├── training_optimization/     # 학습/최적화 에이전트
-├── evaluation_validation/     # 평가/검증 에이전트
-├── deployment_monitoring/     # 배포/모니터링 에이전트
-├── toc_supervisor/           # TOC 총괄 에이전트
-├── examples/                 # 사용 예제
+│   ├── raci.py                # RACI matrix
+│   ├── documentation.py       # Documentation system
+│   ├── agent_pool.py          # Agent pool
+│   ├── toc_supervisor.py      # TOC general manager (including final analysis)
+│   └── orchestrator.py        # Main orchestrator
+├── coordinator/               # Coordinator agent
+├── problem_definition/        # Problem definition agent
+├── data_collection/           # Data collection agent
+├── design_development/        # Design/development agent
+├── training_optimization/     # Training/optimization agent
+├── evaluation_validation/     # Evaluation/validation agent
+├── deployment_monitoring/     # Deployment/monitoring agent
+├── toc_supervisor/           # TOC general manager agent
+├── examples/                 # Usage examples
 │   ├── basic_usage.py
 │   ├── raci_example.py
-│   ├── plan_approval_example2.py  # 계획 승인 예제
-│   ├── toc_analysis_example.py      # TOC 최종 분석 예제
+│   ├── plan_approval_example2.py  # Plan approval example
+│   ├── toc_analysis_example.py      # TOC final analysis example
 │   ├── toc_optimization_example.py
 │   ├── documentation_example.py
 │   └── workflow_templates_example.py
-├── ARCHITECTURE.md           # 아키텍처 문서 (계획 승인, 최종 분석 포함)
+├── ARCHITECTURE.md           # Architecture document (including plan approval, final analysis)
 ├── MCP_README.md             # MCP README
-└── install-all.sh            # 설치 스크립트
+└── install-all.sh            # Installation script
 ```
 
-## 성능 최적화 가이드
+## Performance Optimization Guide
 
-### 에이전트 스케일링
+### Agent Scaling
 
 ```python
 if utilization > 0.85:
@@ -527,7 +526,7 @@ elif utilization < 0.3:
     pool.scale_down("design_development", 1)
 ```
 
-### 토큰 비용 절감
+### Token Cost Reduction
 
 ```python
 config = WorkflowConfig(
@@ -536,7 +535,7 @@ config = WorkflowConfig(
 )
 ```
 
-### 처리량 증대
+### Throughput Increase
 
 ```python
 config = WorkflowConfig(
@@ -545,7 +544,7 @@ config = WorkflowConfig(
 )
 ```
 
-## 환경 변수
+## Environment Variables
 
 ```bash
 # <agents_directory>/.env
@@ -555,31 +554,31 @@ POSTGRES_PORT=5432
 POSTGRES_USER=postgres
 ```
 
-## 요구사항
+## Requirements
 
 - Python 3.12
 - PostgreSQL 16.11
 - MCP 1.0.0+
-- PyTorch 2.0+ (선택사항, ML 프로젝트용)
+- PyTorch 2.0+ (optional, for ML projects)
 
-## 기여
+## Contributing
 
-이 프로젝트는 OpenCode 생태계의 일부입니다.
+This project is part of the OpenCode ecosystem.
 
-## 최신 업데이트
+## Latest Updates
 
-- **계획 승인 (Plan Approval)**: RESPONSIBLE 에이전트가 계획을 제출하고 ACCOUNTABLE 에이전트가 승인하는 프로세스 추가
-- **TOC 최종 분석**: 모든 Work 완료 후 자동으로 토큰 효율, 에이전트 효율, 병목 현상 분석
-- **개선 제안 자동 생성**: Token 최적화, 에이전트 스케일링, 처리 속도 향상 방안 자동 제안
+- **Plan Approval**: Process where RESPONSIBLE agent submits plan and ACCOUNTABLE agent approves
+- **TOC Final Analysis**: Automatic analysis of token efficiency, agent efficiency, and bottlenecks after all Work completions
+- **Automatic Improvement Suggestions**: Automatic suggestions for token optimization, agent scaling, and processing speed improvement
 
-## 요구사항
+## Requirements
 
 - Python 3.12
 - PostgreSQL 16.11
 - MCP 1.0.0+
-- PyTorch 2.0+ (선택사항, ML 프로젝트용)
+- PyTorch 2.0+ (optional, for ML projects)
 
-## 설치된 Python 패키지
+## Installed Python Packages
 
 - mcp==1.26.0
 - pandas==3.0.0
