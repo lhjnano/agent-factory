@@ -1,12 +1,35 @@
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 import asyncio
 import re
+import hashlib
+import json
+
+
+@dataclass
+class SkillVersion:
+    version: str
+    content: str
+    created_at: datetime
+    changelog: str = ""
+
+
+@dataclass
+class SkillCache:
+    content: str
+    cached_at: datetime
+    ttl_seconds: int = 3600
+    hits: int = 0
+    
+    def is_expired(self) -> bool:
+        return (datetime.now() - self.cached_at).total_seconds() > self.ttl_seconds
 
 
 class SkillManager:
     """
-    Manages agent skills - loading, assigning, and effectiveness tracking.
+    Manages agent skills - loading, assigning, caching, versioning, and effectiveness tracking.
     Skills are defined in SKILL.md files under .agent/skills/ or .claude/skills/.
     """
 
@@ -15,12 +38,30 @@ class SkillManager:
         self._skill_effectiveness: Dict[str, Dict[str, float]] = {}
         self._repo_root = repo_root or Path.cwd()
         self._lock = asyncio.Lock()
+        
+        # Caching
+        self._cache: Dict[str, SkillCache] = {}
+        self._cache_enabled: bool = True
+        self._cache_ttl: int = 3600
+        
+        # Versioning
+        self._versions: Dict[str, List[SkillVersion]] = {}
+        self._current_version: Dict[str, str] = {}
 
     async def load_skill(self, skill_name: str) -> Optional[str]:
         """
         Load a skill from SKILL.md file.
         Searches in order: .agent/skills/, .claude/skills/
+        Uses cache if available and not expired.
         """
+        # Check cache first
+        if self._cache_enabled and skill_name in self._cache:
+            cache_entry = self._cache[skill_name]
+            if not cache_entry.is_expired():
+                cache_entry.hits += 1
+                self._skills[skill_name] = cache_entry.content
+                return cache_entry.content
+        
         async with self._lock:
             if skill_name in self._skills:
                 return self._skills[skill_name]
@@ -37,6 +78,16 @@ class SkillManager:
                     try:
                         content = path.read_text(encoding="utf-8")
                         self._skills[skill_name] = content
+                        
+                        # Cache the skill
+                        if self._cache_enabled:
+                            self._cache[skill_name] = SkillCache(
+                                content=content,
+                                cached_at=datetime.now(),
+                                ttl_seconds=self._cache_ttl,
+                                hits=1
+                            )
+                        
                         return content
                     except Exception as e:
                         print(f"Failed to load skill {skill_name} from {path}: {e}")
@@ -236,3 +287,148 @@ class SkillManager:
     def reset_skill_effectiveness(self):
         """Reset all skill effectiveness metrics."""
         self._skill_effectiveness.clear()
+    
+    # ==================== Caching Methods ====================
+    
+    def enable_cache(self, ttl_seconds: int = 3600):
+        """Enable skill caching with specified TTL."""
+        self._cache_enabled = True
+        self._cache_ttl = ttl_seconds
+    
+    def disable_cache(self):
+        """Disable skill caching."""
+        self._cache_enabled = False
+    
+    def clear_cache(self, skill_name: Optional[str] = None):
+        """Clear cache for specific skill or all skills."""
+        if skill_name:
+            self._cache.pop(skill_name, None)
+        else:
+            self._cache.clear()
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get cache statistics."""
+        total_hits = sum(c.hits for c in self._cache.values())
+        expired_count = sum(1 for c in self._cache.values() if c.is_expired())
+        
+        return {
+            "enabled": self._cache_enabled,
+            "ttl_seconds": self._cache_ttl,
+            "cached_skills": len(self._cache),
+            "total_hits": total_hits,
+            "expired_entries": expired_count,
+            "cache_details": {
+                name: {
+                    "hits": cache.hits,
+                    "age_seconds": (datetime.now() - cache.cached_at).total_seconds(),
+                    "expired": cache.is_expired()
+                }
+                for name, cache in self._cache.items()
+            }
+        }
+    
+    # ==================== Versioning Methods ====================
+    
+    def create_version(self, skill_name: str, content: str, changelog: str = "") -> str:
+        """
+        Create a new version of a skill.
+        Returns the version identifier.
+        """
+        content_hash = hashlib.sha256(content.encode()).hexdigest()[:8]
+        version = f"v{datetime.now().strftime('%Y%m%d%H%M%S')}_{content_hash}"
+        
+        version_entry = SkillVersion(
+            version=version,
+            content=content,
+            created_at=datetime.now(),
+            changelog=changelog
+        )
+        
+        if skill_name not in self._versions:
+            self._versions[skill_name] = []
+        
+        self._versions[skill_name].append(version_entry)
+        self._current_version[skill_name] = version
+        
+        return version
+    
+    def get_skill_version(self, skill_name: str, version: str) -> Optional[str]:
+        """Get a specific version of a skill."""
+        if skill_name not in self._versions:
+            return None
+        
+        for v in self._versions[skill_name]:
+            if v.version == version:
+                return v.content
+        
+        return None
+    
+    def get_current_version(self, skill_name: str) -> Optional[str]:
+        """Get the current version identifier for a skill."""
+        return self._current_version.get(skill_name)
+    
+    def list_versions(self, skill_name: str) -> List[Dict[str, Any]]:
+        """List all versions of a skill."""
+        if skill_name not in self._versions:
+            return []
+        
+        return [
+            {
+                "version": v.version,
+                "created_at": v.created_at.isoformat(),
+                "changelog": v.changelog,
+                "is_current": v.version == self._current_version.get(skill_name)
+            }
+            for v in self._versions[skill_name]
+        ]
+    
+    def rollback_version(self, skill_name: str, version: str) -> bool:
+        """Rollback to a specific version."""
+        if skill_name not in self._versions:
+            return False
+        
+        for v in self._versions[skill_name]:
+            if v.version == version:
+                self._current_version[skill_name] = version
+                self._skills[skill_name] = v.content
+                
+                # Update cache
+                if self._cache_enabled:
+                    self._cache[skill_name] = SkillCache(
+                        content=v.content,
+                        cached_at=datetime.now(),
+                        ttl_seconds=self._cache_ttl
+                    )
+                
+                return True
+        
+        return False
+    
+    def get_version_diff(self, skill_name: str, version1: str, version2: str) -> Optional[Dict[str, Any]]:
+        """Get the difference between two versions."""
+        content1 = self.get_skill_version(skill_name, version1)
+        content2 = self.get_skill_version(skill_name, version2)
+        
+        if content1 is None or content2 is None:
+            return None
+        
+        return {
+            "version1": version1,
+            "version2": version2,
+            "size_diff": len(content2) - len(content1),
+            "line_diff": content2.count('\n') - content1.count('\n')
+        }
+    
+    def get_versioning_stats(self) -> Dict[str, Any]:
+        """Get versioning statistics."""
+        total_versions = sum(len(v) for v in self._versions.values())
+        
+        return {
+            "total_skills_with_versions": len(self._versions),
+            "total_versions": total_versions,
+            "average_versions_per_skill": total_versions / len(self._versions) if self._versions else 0,
+            "version_details": {
+                name: len(versions)
+                for name, versions in self._versions.items()
+            }
+        }

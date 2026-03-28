@@ -23,13 +23,22 @@ def expand_config_paths(config):
     
     return expand_value(config)
 
-from .problem_definition import ProblemDefinitionAgent
-from .data_collection import DataCollectionAgent
-from .design_development import DesignDevelopmentAgent
-from .training_optimization import TrainingOptimizationAgent
-from .evaluation_validation import EvaluationValidationAgent
-from .deployment_monitoring import DeploymentMonitoringAgent
-from .coordinator import AgentCoordinator
+def __getattr__(name: str):
+    """Lazy import to avoid mcp dependency errors during testing."""
+    _lazy_imports = {
+        "ProblemDefinitionAgent": ".problem_definition",
+        "DataCollectionAgent": ".data_collection",
+        "DesignDevelopmentAgent": ".design_development",
+        "TrainingOptimizationAgent": ".training_optimization",
+        "EvaluationValidationAgent": ".evaluation_validation",
+        "DeploymentMonitoringAgent": ".deployment_monitoring",
+        "AgentCoordinator": ".coordinator",
+    }
+    if name in _lazy_imports:
+        import importlib
+        module = importlib.import_module(_lazy_imports[name], __package__)
+        return getattr(module, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 from .core import (
     Work, WorkStatus, WorkPriority, WorkResult, WorkQueue, WorkPlan, PlanStatus,

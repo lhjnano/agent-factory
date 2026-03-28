@@ -93,6 +93,7 @@ class Work:
     plan: Optional[WorkPlan] = None
     required_skills: List[str] = field(default_factory=list)
     skill_assignments: Dict[str, Dict[str, List[str]]] = field(default_factory=dict)
+    queue_preference: str = "auto"
 
     def can_start(self, completed_work_ids: set) -> bool:
         return all(dep_id in completed_work_ids for dep_id in self.dependencies)
@@ -186,7 +187,8 @@ class Work:
             "raci_roles": self.raci_roles,
             "tags": self.tags,
             "metadata": self.metadata,
-            "require_plan_approval": self.require_plan_approval
+            "require_plan_approval": self.require_plan_approval,
+            "queue_preference": self.queue_preference
         }
         
         if self.plan:
