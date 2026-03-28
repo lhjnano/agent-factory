@@ -1,0 +1,40 @@
+{
+  "name": "@purpleraven/agent-factory",
+  "version": "2.1.0",
+  "description": "MCP server for Agent Factory - Work-based multi-agent system with TOC optimization, RACI matrix, and automatic documentation",
+  "main": "index.js",
+  "bin": {
+    "agent-factory-mcp": "./index.js"
+  },
+  "scripts": {
+    "test": "node index.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "agent-factory",
+    "multi-agent",
+    "automation",
+    "toc",
+    "raci"
+  ],
+  "author": "purpleraven",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lhjnano/agent-factory"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "index.js",
+    "package.json",
+    "README.md"
+  ],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ]
+}

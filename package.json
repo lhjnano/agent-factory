@@ -1,0 +1,30 @@
+{
+  "name": "agent-factory",
+  "version": "1.0.0",
+  "description": "Work-based Multi-Agent System Architecture",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lhjnano/agent-factory.git"
+  },
+  "keywords": [
+    "mutl-agent",
+    "workflow",
+    "productivity",
+    "orchestration"
+  ],
+  "author": "HeonJe Lee (lhjnano@gmail.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lhjnano/agent-factory/issues"
+  },
+  "homepage": "https://github.com/lhjnano/agent-factory#readme"
+}

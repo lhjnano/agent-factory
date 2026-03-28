@@ -37,13 +37,23 @@ This guide helps OpenCode and other AI agents effectively use Agent Factory's MC
 # Check MCP server is configured
 cat ~/.config/opencode/opencode.json | grep agent-factory
 
-# Expected output:
+# Expected output (using Python directly):
 # "agent-factory": {
 #   "type": "local",
 #   "command": [
-#     "/home/lhjnano/source/agent-factory/venv/bin/python",
+#     "<agent_factory_directory>/venv/bin/python",
 #     "-m",
 #     "agent_factory.mcp_server"
+#   ]
+# }
+
+# Or using npx (recommended):
+# "agent-factory": {
+#   "type": "local",
+#   "command": [
+#     "npx",
+#     "-y",
+#     "@purpleraven/agent-factory"
 #   ]
 # }
 ```

@@ -11,7 +11,7 @@
 ## ✅ Installation Checklist
 
 ### 1. Package Installation
-- [x] Virtual environment exists at `/home/lhjnano/source/agent-factory/venv`
+- [x] Virtual environment exists at `<agent_factory_directory>/venv`
 - [x] Package reinstalled with `pip install -e .`
 - [x] All new modules successfully imported
 - [x] Dependencies up to date
@@ -57,7 +57,7 @@
 
 ### 4. OpenCode Integration
 - [x] MCP server configured in `~/.config/opencode/opencode.json`
-- [x] MCP server path: `/home/lhjnano/source/agent-factory/venv/bin/python -m agent_factory.mcp_server`
+- [x] MCP server path: `<agent_factory_directory>/venv/bin/python -m agent_factory.mcp_server` (or use `npx -y @purpleraven/agent-factory`)
 - [x] 15 MCP tools available
   - [x] execute_workflow
   - [x] define_problem
@@ -348,7 +348,8 @@ ps aux | grep "agent_factory.mcp_server"
 # 2. Check configuration
 cat ~/.config/opencode/opencode.json
 
-# 3. Restart OpenCode
+# 3. Try npx
+npx -y @purpleraven/agent-factory
 ```
 
 ### Issue: Import Errors

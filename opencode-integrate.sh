@@ -35,13 +35,13 @@ agent_dir = sys.argv[2]
 with open(config_path, 'r') as f:
     config = json.load(f)
 
-# agent-factory MCP 서버 추가
+# agent-factory MCP 서버 추가 (npx 버전 사용)
 config['mcp']['agent-factory'] = {
     "type": "local",
     "command": [
-        f"{agent_dir}/venv/bin/python",
-        "-m",
-        "agent_factory.mcp_server"
+        "npx",
+        "-y",
+        "@purpleraven/agent-factory"
     ],
 }
 
@@ -57,8 +57,9 @@ echo ""
 echo "Configuration:"
 echo "  File: ~/.config/opencode/opencode.json"
 echo "  Server: agent-factory (added to mcp section)"
-echo "  Command: $AGENT_DIR/venv/bin/python -m agent_factory.mcp_server"
-echo "  PYTHONPATH: $AGENT_DIR/src"
+echo "  Command: npx -y @purpleraven/agent-factory"
+echo ""
+echo "Note: Using npx wrapper - no need to specify Python paths!"
 echo ""
 echo "Next steps:"
 echo "  1. Restart OpenCode to load MCP server"

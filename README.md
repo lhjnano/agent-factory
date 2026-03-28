@@ -2,6 +2,44 @@
 
 Work-based Multi-Agent System Architecture
 
+## Quick Start
+
+### Option 1: Using npx (Recommended for OpenCode)
+
+No installation required! Just run:
+
+```bash
+npx -y @purpleraven/agent-factory
+```
+
+Then add to your `~/.config/opencode/opencode.json`:
+
+```json
+{
+  "mcp": {
+    "agent-factory": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@purpleraven/agent-factory"
+      ]
+    }
+  }
+}
+```
+
+### Option 2: Python Installation
+
+```bash
+cd <agent_factory_directory>
+./setup-mcp.sh
+source venv/bin/activate
+python -m agent_factory.mcp_server
+```
+
+See `docs/SETUP.md` for complete installation instructions.
+
 ## Overview
 
 This system provides the following core functionalities:

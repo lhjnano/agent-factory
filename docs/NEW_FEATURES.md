@@ -270,7 +270,7 @@ analysis = await supervisor.analyze_system()
 All new modules are fully tested with 241 passing tests:
 
 ```bash
-cd /home/lhjnano/source/agent-factory
+cd <agent_factory_directory>
 source venv/bin/activate
 pytest tests/ -v
 ```

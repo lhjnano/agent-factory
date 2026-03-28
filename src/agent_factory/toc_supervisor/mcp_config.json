@@ -1,18 +1,19 @@
 {
   "mcpServers": {
     "memory": {
-      "command": "node",
+      "command": "npx",
       "args": [
-        "/home/lhjnano/source/memory/build/index.js",
-        "stdio"
+        "-y",
+        "@modelcontextprotocol/server-memory"
       ],
       "env": {}
     },
     "filesystem": {
-      "command": "node",
+      "command": "npx",
       "args": [
-        "/home/lhjnano/source/filesystem/build/index.js",
-        "stdio"
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "$HOME"
       ],
       "env": {}
     }
