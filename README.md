@@ -4,41 +4,55 @@ Work-based Multi-Agent System Architecture
 
 ## Quick Start
 
-### Option 1: Using npx (Recommended for OpenCode)
-
-No installation required! Just run:
+### Step 1: Install via npm
 
 ```bash
-npx -y @purpleraven/agent-factory
+npm i -g agent-factory
 ```
 
-Then add to your `~/.config/opencode/opencode.json`:
+### Step 2: Set up Python environment
 
-```json
-{
-  "mcp": {
-    "agent-factory": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@purpleraven/agent-factory"
-      ]
-    }
-  }
-}
-```
-
-### Option 2: Python Installation
+Clone the repo and set up a virtualenv:
 
 ```bash
-cd <agent_factory_directory>
-./setup-mcp.sh
-source venv/bin/activate
-python -m agent_factory.mcp_server
+git clone https://github.com/lhjnano/agent-factory.git
+cd agent-factory
+
+# Ubuntu/Debian: install venv support if missing
+sudo apt install -y python3-venv   # or python3.10-venv
+
+AGENT_DIR="$(pwd)"
+python3 -m venv "$AGENT_DIR/venv"
+"$AGENT_DIR/venv/bin/pip" install --upgrade pip
+"$AGENT_DIR/venv/bin/pip" install -e "$AGENT_DIR"
+"$AGENT_DIR/venv/bin/pip" install pandas numpy psycopg2-binary "mcp>=1.0.0" python-dotenv
+"$AGENT_DIR/venv/bin/pip" install torch --index-url https://download.pytorch.org/whl/cpu
 ```
 
-See `docs/SETUP.md` for complete installation instructions.
+> `npm i -g` does **not** copy `venv/` — always point `AGENT_FACTORY_PATH` and
+> `AGENT_FACTORY_VENV` to the **cloned** directory where you ran `pip install`.
+
+### Step 3: Register MCP server (Claude Code)
+
+```bash
+AGENT_DIR="/path/to/cloned/agent-factory"
+
+claude mcp add agent-factory \
+  -e AGENT_FACTORY_PATH="$AGENT_DIR" \
+  -e AGENT_FACTORY_VENV="$AGENT_DIR/venv" \
+  -- npx agent-factory
+```
+
+Restart Claude Code — agent-factory tools will appear under `/mcp`.
+
+### Verify
+
+```bash
+AGENT_FACTORY_PATH="/path/to/cloned/agent-factory" \
+AGENT_FACTORY_VENV="/path/to/cloned/agent-factory/venv" \
+timeout 5 npx agent-factory 2>&1 || true
+# Expected: "[Agent Factory] Using venv from ..." then "Starting MCP server..."
+```
 
 ## Overview
 
@@ -592,37 +606,32 @@ plan_status = orchestrator.get_work_plan_status(work_id)
 ## Directory Structure
 
 ```
-agents/
-├── core/
-│   ├── __init__.py
-│   ├── work.py           # Work, WorkQueue definition
-│   ├── raci.py           # RACI matrix
-│   ├── documentation.py  # Documentation system
-│   ├── agent_pool.py     # Agent pool management
-│   ├── toc_supervisor.py # TOC general agent
-│   └── orchestrator.py   # Main orchestrator
-├── coordinator/
-│   ├── agent.py
-│   └── AGENT.md
-├── problem_definition/
-│   ├── agent.py
-│   └── AGENT.md
-├── data_collection/
-│   ├── agent.py
-│   └── AGENT.md
-├── design_development/
-│   ├── agent.py
-│   └── AGENT.md
-├── training_optimization/
-│   ├── agent.py
-│   └── AGENT.md
-├── evaluation_validation/
-│   ├── agent.py
-│   └── AGENT.md
-├── deployment_monitoring/
-│   ├── agent.py
-│   └── AGENT.md
-└── MCP_README.md
+agent-factory/
+├── src/agent_factory/
+│   ├── core/
+│   │   ├── work.py              # Work, WorkQueue definition
+│   │   ├── raci.py              # RACI matrix
+│   │   ├── documentation.py     # Documentation system
+│   │   ├── agent_pool.py        # Agent pool management
+│   │   ├── toc_supervisor.py    # TOC supervisor
+│   │   ├── orchestrator.py      # Main orchestrator
+│   │   ├── skill_manager.py     # Skill loading & effectiveness tracking
+│   │   ├── skill_analyzer.py    # Work→skill recommendation
+│   │   └── context_manager.py   # Work-to-work context propagation
+│   ├── coordinator/
+│   │   └── agent.py             # AgentCoordinator (workflow runner)
+│   ├── problem_definition/
+│   ├── data_collection/
+│   ├── design_development/
+│   ├── training_optimization/
+│   ├── evaluation_validation/
+│   ├── deployment_monitoring/
+│   └── mcp_server.py            # MCP server entry point
+├── npm-package/
+│   ├── index.js                 # Node.js wrapper (launches mcp_server.py)
+│   └── package.json
+├── pyproject.toml
+└── setup-mcp.sh                 # Alternative: full local setup script
 ```
 
 ### Plan Approval Functionality
@@ -713,9 +722,11 @@ skills = await orchestrator.skill_manager.load_all_skills([
 # Get skill information assigned to Work
 skill_info = await orchestrator.get_work_skills(work.work_id)
 
-print(skill_info["required_skills"])
-print(skill_info["skill_assignments"])
-print(skill_info["skill_content"])
+print(skill_info["required_skills"])    # list of skill names
+print(skill_info["skill_assignments"])  # RACI role → skill mapping
+
+# To get full skill content, call separately:
+content = await orchestrator.skill_manager.get_skill_content("design-development-skill")
 ```
 
 ### Get Skill Effectiveness

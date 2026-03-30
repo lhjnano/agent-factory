@@ -167,13 +167,14 @@ class MultiAgentOrchestrator:
             if not agent:
                 continue
 
-            # Load skills for this agent
+            # Load skills for this agent.
+            # skill_manager already caches content internally — store only the name on the
+            # agent to avoid duplicating potentially large markdown strings per agent instance.
             for skill_name in skills:
                 if skill_name not in agent.skills:
-                    skill_content = await self.skill_manager.get_skill_content(skill_name)
-                    if skill_content:
+                    skill_exists = await self.skill_manager.get_skill_content(skill_name)
+                    if skill_exists:
                         agent.skills.append(skill_name)
-                        agent.skill_content[skill_name] = skill_content
                         print(f"Assigned skill '{skill_name}' to agent '{agent_id}' for role '{role}'")
 
     async def consult_and_assign_skills(self, work: Work, consultant_agent_id: str):
@@ -223,23 +224,19 @@ class MultiAgentOrchestrator:
         }
 
     async def get_work_skills(self, work_id: str) -> Dict[str, Any]:
-        """Get skill information for a work."""
+        """Get skill information for a work.
+
+        Returns skill names and assignments only; full content is fetched on demand via
+        get_skill_content() to avoid loading large markdown blobs for every listing call.
+        """
         work = self._works.get(work_id)
         if not work:
             raise ValueError(f"Work '{work_id}' not found")
-
-        # Load full skill content for all required skills
-        skill_details = {}
-        for skill_name in work.required_skills:
-            content = await self.skill_manager.get_skill_content(skill_name)
-            if content:
-                skill_details[skill_name] = content
 
         return {
             "work_id": work_id,
             "required_skills": work.required_skills,
             "skill_assignments": work.skill_assignments,
-            "skill_content": skill_details
         }
     
     async def submit_work(self, work: Work) -> str:

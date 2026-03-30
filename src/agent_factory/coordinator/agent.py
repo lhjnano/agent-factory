@@ -56,6 +56,23 @@ class AgentCoordinator:
                 return json.load(f)
         return {}
 
+    # Keys each phase actually needs from the previous phase result.
+    # Passing only these avoids propagating full result dicts as context.
+    _ESSENTIAL_KEYS: Dict[str, list] = {
+        "problem_definition":    ["objective", "model_type", "features", "target", "constraints"],
+        "design_development":    ["architecture", "model_class", "hyperparameters", "input_shape"],
+        "data_collection":       ["data_path", "schema", "row_count"],
+        "training_optimization": ["model_path", "metrics"],
+        "evaluation_validation": ["accuracy", "metrics", "model_path"],
+    }
+
+    def _extract_essentials(self, phase: str, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Return only the keys the next phase needs from a phase result."""
+        keys = self._ESSENTIAL_KEYS.get(phase, [])
+        if not keys:
+            return result
+        return {k: result[k] for k in keys if k in result}
+
     async def execute_workflow(self, user_request: str) -> Dict[str, Any]:
         workflow_result = {
             "request": user_request,
@@ -65,27 +82,22 @@ class AgentCoordinator:
         }
 
         try:
-            problem_def = await self._run_phase(
-                "problem_definition",
-                {"requirements": user_request}
+            # problem_definition and data_collection are independent — run in parallel
+            problem_def, data_result = await asyncio.gather(
+                self._run_phase("problem_definition", {"requirements": user_request}),
+                self._run_phase("data_collection", {"sources": [str(HOME_DIR / "data" / "raw_data.csv")]})
             )
-            workflow_result["phases"].append(problem_def)
-
-            data_result = await self._run_phase(
-                "data_collection",
-                {"sources": [str(HOME_DIR / "data" / "raw_data.csv")]}
-            )
-            workflow_result["phases"].append(data_result)
+            workflow_result["phases"].extend([problem_def, data_result])
 
             design_result = await self._run_phase(
                 "design_development",
-                {"problem_def": problem_def.get("result", {})}
+                {"problem_def": self._extract_essentials("problem_definition", problem_def.get("result", {}))}
             )
             workflow_result["phases"].append(design_result)
 
             training_result = await self._run_phase(
                 "training_optimization",
-                {"model_config": design_result.get("result", {})}
+                {"model_config": self._extract_essentials("design_development", design_result.get("result", {}))}
             )
             workflow_result["phases"].append(training_result)
 

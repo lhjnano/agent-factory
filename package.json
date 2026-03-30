@@ -2,7 +2,10 @@
   "name": "agent-factory",
   "version": "1.0.0",
   "description": "Work-based Multi-Agent System Architecture",
-  "main": "index.js",
+  "main": "npm-package/index.js",
+  "bin": {
+    "agent-factory": "npm-package/index.js"
+  },
   "directories": {
     "doc": "docs",
     "example": "examples",
