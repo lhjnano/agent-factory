@@ -6,15 +6,21 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
 
-from .problem_definition.agent import ProblemDefinitionAgent
-from .data_collection.agent import DataCollectionAgent
-from .design_development.agent import DesignDevelopmentAgent
-from .training_optimization.agent import TrainingOptimizationAgent
-from .evaluation_validation.agent import EvaluationValidationAgent
-from .deployment_monitoring.agent import DeploymentMonitoringAgent
+from pathlib import Path
+
+def _import_agents():
+    """agent 클래스들을 지연 import - torch/numpy 등 미설치 패키지 있어도 서버 기동 가능"""
+    from .problem_definition.agent import ProblemDefinitionAgent
+    from .data_collection.agent import DataCollectionAgent
+    from .design_development.agent import DesignDevelopmentAgent
+    from .training_optimization.agent import TrainingOptimizationAgent
+    from .evaluation_validation.agent import EvaluationValidationAgent
+    from .deployment_monitoring.agent import DeploymentMonitoringAgent
+    return (ProblemDefinitionAgent, DataCollectionAgent, DesignDevelopmentAgent,
+            TrainingOptimizationAgent, EvaluationValidationAgent, DeploymentMonitoringAgent)
+
 from .core.skill_manager import SkillManager
 from .core.skill_analyzer import SkillAnalyzer
-from pathlib import Path
 
 AGENT_DIR = Path(__file__).parent
 HOME_DIR = Path("/var/lib/agent-factory")
@@ -46,13 +52,36 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="execute_workflow",
-            description="Execute complete development workflow from problem definition to deployment",
+            description=(
+                "Execute a multi-agent workflow. work_type을 지정하거나 생략하면 자동 감지. "
+                "지원 타입: ml_development, software_development, test_generation, "
+                "data_analysis, code_review, api_testing, deployment, ci_cd"
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "user_request": {
                         "type": "string",
-                        "description": "User's problem statement or requirements"
+                        "description": "작업 설명 또는 요구사항"
+                    },
+                    "work_type": {
+                        "type": "string",
+                        "description": "파이프라인 유형 (생략 시 자동 감지)",
+                        "enum": [
+                            "ml_development", "software_development",
+                            "test_generation", "data_analysis",
+                            "code_review", "api_testing",
+                            "deployment", "ci_cd"
+                        ]
+                    },
+                    "stages": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "실행할 단계 직접 지정 (생략 시 work_type 기본값 사용)"
+                    },
+                    "context": {
+                        "type": "object",
+                        "description": "단계 간 공유할 초기 컨텍스트"
                     }
                 },
                 "required": ["user_request"]
@@ -61,20 +90,6 @@ async def list_tools() -> list[Tool]:
         Tool(
             name="define_problem",
             description="Define problem scope and create project plan with phases and timeline",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "requirements": {
-                        "type": "string",
-                        "description": "Project requirements and objectives"
-                    }
-                },
-                "required": ["requirements"]
-            }
-        ),
-        Tool(
-            name="define_problem",
-            description="Define the ML problem and create project plan",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -284,10 +299,18 @@ async def list_tools() -> list[Tool]:
 @app.call_tool()
 async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageContent | EmbeddedResource]:
     try:
+        (ProblemDefinitionAgent, DataCollectionAgent, DesignDevelopmentAgent,
+         TrainingOptimizationAgent, EvaluationValidationAgent, DeploymentMonitoringAgent) = _import_agents()
+
         if name == "execute_workflow":
-            result = await _execute_workflow(arguments.get("user_request", ""))
+            result = await _execute_workflow(
+                user_request=arguments.get("user_request", ""),
+                work_type=arguments.get("work_type"),
+                stages=arguments.get("stages"),
+                context=arguments.get("context", {}),
+            )
             return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
-        
+
         elif name == "define_problem":
             agent = ProblemDefinitionAgent()
             await agent.connect_servers()
@@ -296,7 +319,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
             await agent.close()
             result = {"problem_definition": problem_def, "project_plan": plan}
             return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
-        
+
         elif name == "collect_data":
             agent = DataCollectionAgent()
             await agent.connect_servers()
@@ -304,25 +327,25 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
             stats = await agent.preprocess_data(data)
             await agent.close()
             return [TextContent(type="text", text=json.dumps(stats, indent=2, ensure_ascii=False))]
-        
+
         elif name == "preprocess_data":
-            import pandas as pd
             agent = DataCollectionAgent()
             await agent.connect_servers()
+            import pandas as pd
             df = pd.read_csv(arguments.get("data_path", ""))
             result = await agent.preprocess_data(df)
             quality = await agent.validate_data_quality(df)
             await agent.close()
             result["quality_report"] = quality
             return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
-        
+
         elif name == "design_architecture":
             agent = DesignDevelopmentAgent()
             await agent.connect_servers()
             result = await agent.design_architecture(arguments.get("problem_def", {}))
             await agent.close()
             return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
-        
+
         elif name == "generate_implementation":
             agent = DesignDevelopmentAgent()
             await agent.connect_servers()
@@ -331,7 +354,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
             await agent.close()
             result = {"implementation_code": code, "script": train_script}
             return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
-        
+
         elif name == "optimize_process":
             agent = TrainingOptimizationAgent()
             await agent.connect_servers()
@@ -342,7 +365,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
             result = {"status": "process_configured", "config": config}
             await agent.close()
             return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
-        
+
         elif name == "evaluate_results":
             agent = EvaluationValidationAgent()
             await agent.connect_servers()
@@ -351,7 +374,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
             await agent.close()
             result = {"metrics": metrics, "report": report}
             return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
-        
+
         elif name == "deploy_system":
             agent = DeploymentMonitoringAgent()
             await agent.connect_servers()
@@ -361,12 +384,27 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
             )
             await agent.close()
             return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
-        
+
         elif name == "monitor_system":
             agent = DeploymentMonitoringAgent()
             await agent.connect_servers()
             result = await agent.monitor_performance(arguments.get("version", "1.0.0"))
             await agent.close()
+            return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+
+        elif name == "assign_skills_to_work":
+            skill_manager = SkillManager(repo_root=Path.cwd())
+            result = skill_manager.assign_skills_to_work(
+                work_id=arguments.get("work_id", ""),
+                consultant_agent_id=arguments.get("consultant_agent_id")
+            ) if hasattr(skill_manager, "assign_skills_to_work") else {"status": "not_supported"}
+            return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
+
+        elif name == "get_work_skills":
+            skill_manager = SkillManager(repo_root=Path.cwd())
+            result = skill_manager.get_work_skills(
+                work_id=arguments.get("work_id", "")
+            ) if hasattr(skill_manager, "get_work_skills") else {"status": "not_supported"}
             return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False))]
 
         elif name == "analyze_work_for_skills":
@@ -413,33 +451,201 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
     except Exception as e:
         return [TextContent(type="text", text=json.dumps({"error": str(e)}, indent=2))]
 
-async def _execute_workflow(user_request: str) -> Dict[str, Any]:
+# ---------------------------------------------------------------------------
+# 파이프라인 레지스트리
+# 각 work_type별 실행할 stage 순서 정의
+# ---------------------------------------------------------------------------
+PIPELINE_REGISTRY: Dict[str, list] = {
+    "ml_development": [
+        "problem_definition",
+        "data_collection",
+        "design_development",
+        "training_optimization",
+        "evaluation_validation",
+        "deployment_monitoring",
+    ],
+    "software_development": [
+        "problem_definition",
+        "design_development",
+        "evaluation_validation",
+    ],
+    "test_generation": [
+        "problem_definition",
+        "design_development",
+        "evaluation_validation",
+    ],
+    "data_analysis": [
+        "problem_definition",
+        "data_collection",
+        "evaluation_validation",
+    ],
+    "code_review": [
+        "problem_definition",
+        "evaluation_validation",
+    ],
+    "api_testing": [
+        "problem_definition",
+        "design_development",
+        "evaluation_validation",
+        "deployment_monitoring",
+    ],
+    "deployment": [
+        "problem_definition",
+        "deployment_monitoring",
+    ],
+    "ci_cd": [
+        "problem_definition",
+        "design_development",
+        "evaluation_validation",
+        "deployment_monitoring",
+    ],
+}
+
+# work_type 자동 감지용 키워드 맵
+_WORK_TYPE_KEYWORDS: Dict[str, list] = {
+    # 구체적인 것 먼저 — 순서가 우선순위
+    "ml_development":       ["train", "model", "ml ", "machine learning", "학습", "모델", "신경망", "neural"],
+    "api_testing":          ["api 테스트", "api test", "rest api", "api", "endpoint", "엔드포인트"],
+    "ci_cd":                ["ci/cd", "ci cd", "pipeline", "파이프라인", "jenkins", "gitlab-ci", "gitlab ci", "gitlab"],
+    "deployment":           ["deploy", "배포", "release", "릴리스", "rollout"],
+    "code_review":          ["review", "검토", "코드리뷰", "refactor", "리팩"],
+    "data_analysis":        ["data analys", "데이터 분석", "statistics", "통계"],
+    "test_generation":      ["test", "테스트", "spec", "coverage", "커버리지", "assert"],
+    "data_analysis":        ["data", "데이터", "analys", "분석"],
+    "software_development": [],   # fallback
+}
+
+def _detect_work_type(user_request: str) -> str:
+    lower = user_request.lower()
+    for wtype, keywords in _WORK_TYPE_KEYWORDS.items():
+        if keywords and any(kw in lower for kw in keywords):
+            return wtype
+    return "software_development"
+
+
+async def _run_stage(stage: str, ctx: Dict[str, Any], agents_tuple) -> Dict[str, Any]:
+    """단일 stage 실행 — 결과를 ctx에 누적해 다음 stage에 전달"""
+    (ProblemDefinitionAgent, DataCollectionAgent, DesignDevelopmentAgent,
+     TrainingOptimizationAgent, EvaluationValidationAgent, DeploymentMonitoringAgent) = agents_tuple
+
+    if stage == "problem_definition":
+        agent = ProblemDefinitionAgent()
+        await agent.connect_servers()
+        problem_def = await agent.define_problem(ctx.get("user_request", ""))
+        plan = await agent.create_project_plan(problem_def)
+        await agent.close()
+        ctx["problem_def"] = problem_def
+        ctx["plan"] = plan
+        return {"problem_def": problem_def, "plan": plan}
+
+    elif stage == "data_collection":
+        agent = DataCollectionAgent()
+        await agent.connect_servers()
+        sources = ctx.get("sources", [])
+        data = await agent.collect_data(sources)
+        stats = await agent.preprocess_data(data)
+        await agent.close()
+        ctx["data_stats"] = stats
+        return {"stats": stats}
+
+    elif stage == "design_development":
+        agent = DesignDevelopmentAgent()
+        await agent.connect_servers()
+        architecture = await agent.design_architecture(ctx.get("problem_def", {}))
+        code = await agent.generate_code(architecture)
+        await agent.close()
+        ctx["architecture"] = architecture
+        ctx["code"] = code
+        return {"architecture": architecture}
+
+    elif stage == "training_optimization":
+        agent = TrainingOptimizationAgent()
+        await agent.connect_servers()
+        config = {
+            "epochs": ctx.get("epochs", 100),
+            "learning_rate": ctx.get("learning_rate", 0.001),
+            "batch_size": ctx.get("batch_size", 32),
+        }
+        result = {"status": "process_configured", "config": config}
+        await agent.close()
+        ctx["training_config"] = config
+        return result
+
+    elif stage == "evaluation_validation":
+        agent = EvaluationValidationAgent()
+        await agent.connect_servers()
+        metrics = await agent.evaluate_model(None, None)
+        report = await agent.generate_report(metrics)
+        await agent.close()
+        ctx["metrics"] = metrics
+        return {"metrics": metrics, "report": report}
+
+    elif stage == "deployment_monitoring":
+        agent = DeploymentMonitoringAgent()
+        await agent.connect_servers()
+        result = await agent.deploy_model(
+            ctx.get("artifact_path", ""),
+            ctx.get("deploy_config", {})
+        )
+        await agent.close()
+        ctx["deployment"] = result
+        return result
+
+    else:
+        return {"skipped": f"unknown stage: {stage}"}
+
+
+async def _execute_workflow(
+    user_request: str,
+    work_type: str = None,
+    stages: list = None,
+    context: Dict[str, Any] = None,
+) -> Dict[str, Any]:
+    agents_tuple = _import_agents()
+
+    # work_type 결정
+    detected_type = work_type or _detect_work_type(user_request)
+
+    # 실행할 stage 결정
+    pipeline_stages = stages or PIPELINE_REGISTRY.get(detected_type, PIPELINE_REGISTRY["software_development"])
+
+    # 컨텍스트 초기화 (이전 단계 출력 → 다음 단계 입력)
+    ctx: Dict[str, Any] = {"user_request": user_request}
+    if context:
+        ctx.update(context)
+
     workflow_result = {
         "request": user_request,
+        "work_type": detected_type,
+        "pipeline": pipeline_stages,
         "phases": [],
-        "status": "in_progress"
+        "context": {},
+        "status": "in_progress",
     }
 
-    try:
-        phase1 = ProblemDefinitionAgent()
-        await phase1.connect_servers()
-        problem_def = await phase1.define_problem(user_request)
-        plan = await phase1.create_project_plan(problem_def)
-        await phase1.close()
-        workflow_result["phases"].append({"phase": "problem_definition", "status": "completed", "result": {"problem_def": problem_def, "plan": plan}})
+    for stage in pipeline_stages:
+        try:
+            stage_result = await _run_stage(stage, ctx, agents_tuple)
+            workflow_result["phases"].append({
+                "stage": stage,
+                "status": "completed",
+                "result": stage_result,
+            })
+        except Exception as e:
+            workflow_result["phases"].append({
+                "stage": stage,
+                "status": "failed",
+                "error": str(e),
+            })
+            workflow_result["status"] = "failed"
+            workflow_result["error"] = f"stage '{stage}' failed: {e}"
+            break
 
-        phase2 = DesignDevelopmentAgent()
-        await phase2.connect_servers()
-        architecture = await phase2.design_architecture(problem_def)
-        code = await phase2.generate_code(architecture)
-        train_script = await phase2.create_training_script(architecture)
-        await phase2.close()
-        workflow_result["phases"].append({"phase": "design_development", "status": "completed", "result": {"architecture": architecture}})
-
+    if workflow_result["status"] != "failed":
         workflow_result["status"] = "completed"
-    except Exception as e:
-        workflow_result["status"] = "failed"
-        workflow_result["error"] = str(e)
+
+    # 최종 컨텍스트 (단계 간 전달된 데이터) 포함
+    workflow_result["context"] = {k: v for k, v in ctx.items() if k != "user_request"}
 
     return workflow_result
 

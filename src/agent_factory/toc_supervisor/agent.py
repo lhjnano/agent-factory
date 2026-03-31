@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from datetime import datetime
+from contextlib import AsyncExitStack
 from mcp import ClientSession
 from mcp.client.stdio import stdio_client, StdioServerParameters
 
@@ -24,6 +25,7 @@ from agent_factory.core.optimization_algorithms import (
 class TOCSupervisorAgent:
     def __init__(self):
         self.sessions: Dict[str, ClientSession] = {}
+        self._exit_stack = AsyncExitStack()
         self.toc_supervisor = None
         self._agent_pool = None
         self._work_queue = None
@@ -34,19 +36,27 @@ class TOCSupervisorAgent:
         self._repo_root = Path.cwd()
     
     async def connect_servers(self):
-        config_path = AGENT_DIR / "toc_supervisor" / "mcp_config.json"
-        with open(config_path) as f:
-            config = expand_config_paths(json.load(f))
+        """sub-MCP 서버 연결 시도. 실패해도 서버 동작에 영향 없음."""
+        try:
+            config_path = AGENT_DIR / "toc_supervisor" / "mcp_config.json"
+            with open(config_path) as f:
+                config = expand_config_paths(json.load(f))
 
-        for name, server_config in config["mcpServers"].items():
-            params = StdioServerParameters(
-                command=server_config["command"],
-                args=server_config["args"],
-                env=server_config.get("env", {})
-            )
-            session = await stdio_client(params)
-            await session.initialize()
-            self.sessions[name] = session
+            for name, server_config in config["mcpServers"].items():
+                try:
+                    params = StdioServerParameters(
+                        command=server_config["command"],
+                        args=server_config["args"],
+                        env=server_config.get("env", {})
+                    )
+                    read, write = await self._exit_stack.enter_async_context(stdio_client(params))
+                    session = await self._exit_stack.enter_async_context(ClientSession(read, write))
+                    await session.initialize()
+                    self.sessions[name] = session
+                except Exception as e:
+                    pass  # 개별 서버 연결 실패 무시
+        except Exception:
+            pass  # config 파일 없거나 전체 실패 무시
     
     async def initialize_supervisor(self, agent_pool, work_queue, raci, repo_root: Optional[Path] = None):
         self._agent_pool = agent_pool
@@ -417,8 +427,7 @@ class TOCSupervisorAgent:
         return report_text
     
     async def close(self):
-        for session in self.sessions.values():
-            await session.close()
+        await self._exit_stack.aclose()
 
 
     async def main():

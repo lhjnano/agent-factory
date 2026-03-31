@@ -3,6 +3,7 @@ import json
 import time
 from pathlib import Path
 from typing import Any, Dict
+from contextlib import AsyncExitStack
 from mcp import ClientSession
 from mcp.client.stdio import stdio_client, StdioServerParameters
 
@@ -12,22 +13,31 @@ from .. import expand_config_paths, AGENT_DIR, HOME_DIR
 class DeploymentMonitoringAgent:
     def __init__(self):
         self.sessions: Dict[str, ClientSession] = {}
+        self._exit_stack = AsyncExitStack()
         self.deployment_status = {}
 
     async def connect_servers(self):
-        config_path = AGENT_DIR / "deployment_monitoring" / "mcp_config.json"
-        with open(config_path) as f:
-            config = expand_config_paths(json.load(f))
+        """sub-MCP 서버 연결 시도. 실패해도 서버 동작에 영향 없음."""
+        try:
+            config_path = AGENT_DIR / "deployment_monitoring" / "mcp_config.json"
+            with open(config_path) as f:
+                config = expand_config_paths(json.load(f))
 
-        for name, server_config in config["mcpServers"].items():
-            params = StdioServerParameters(
-                command=server_config["command"],
-                args=server_config["args"],
-                env=server_config.get("env", {})
-            )
-            session = await stdio_client(params)
-            await session.initialize()
-            self.sessions[name] = session
+            for name, server_config in config["mcpServers"].items():
+                try:
+                    params = StdioServerParameters(
+                        command=server_config["command"],
+                        args=server_config["args"],
+                        env=server_config.get("env", {})
+                    )
+                    read, write = await self._exit_stack.enter_async_context(stdio_client(params))
+                    session = await self._exit_stack.enter_async_context(ClientSession(read, write))
+                    await session.initialize()
+                    self.sessions[name] = session
+                except Exception as e:
+                    pass  # 개별 서버 연결 실패 무시
+        except Exception:
+            pass  # config 파일 없거나 전체 실패 무시
 
     async def deploy_model(self, model_path: str, config: Dict) -> Dict[str, Any]:
         deployment_info = {
@@ -182,8 +192,7 @@ class DeploymentMonitoringAgent:
         return alert_triggered
 
     async def close(self):
-        for session in self.sessions.values():
-            await session.close()
+        await self._exit_stack.aclose()
 
 
 async def main():
