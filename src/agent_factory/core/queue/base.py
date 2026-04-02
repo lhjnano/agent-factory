@@ -42,3 +42,7 @@ class BaseQueue(ABC):
     
     async def is_empty(self) -> bool:
         return await self.get_pending_count() == 0
+
+    async def change_priority(self, work_id: str, new_priority) -> bool:
+        """우선순위 변경. 미구현 구현체는 False 반환 (no-op)."""
+        return False

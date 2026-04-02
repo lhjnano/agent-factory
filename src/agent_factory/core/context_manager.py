@@ -1,5 +1,6 @@
 from typing import Dict, Optional, Any
 from .context import WorkContext, WorkflowContext
+from .token_optimizer import compress_context, build_context_summary, TokenSavingsTracker
 
 
 class ContextManager:
@@ -7,6 +8,7 @@ class ContextManager:
         self._workflow_contexts: Dict[str, WorkflowContext] = {}
         self._memory_storage = None
         self._filesystem_storage = None
+        self.savings_tracker = TokenSavingsTracker()
     
     def set_mcp_sessions(self, memory_session=None, filesystem_session=None):
         self._memory_storage = memory_session
@@ -86,6 +88,19 @@ class ContextManager:
         if not workflow_ctx:
             return {}
         return workflow_ctx.get_full_context_for_work(work_id)
+
+    def get_compressed_context_for_work(self, workflow_id: str, work_id: str) -> Dict[str, Any]:
+        """
+        전체 컨텍스트를 가져오되, 임계치 초과 값은 파일로 내려쓰고 경로 참조로 교체.
+        에이전트 inputs에 직접 넣어도 토큰 낭비 없이 안전.
+        """
+        full = self.get_full_context_for_work(workflow_id, work_id)
+        return compress_context(full, workflow_id=workflow_id)
+
+    def get_context_summary_for_work(self, workflow_id: str, work_id: str) -> str:
+        """압축된 컨텍스트를 사람이 읽기 쉬운 요약 문자열로 반환 (프롬프트 주입용)."""
+        compressed = self.get_compressed_context_for_work(workflow_id, work_id)
+        return build_context_summary(compressed)
     
     def get_global_context(self, workflow_id: str) -> Dict[str, Any]:
         workflow_ctx = self._workflow_contexts.get(workflow_id)

@@ -236,6 +236,32 @@ print_usage() {
     echo ""
 }
 
+install_claude_skills() {
+    echo ""
+    echo "Installing Claude Code skills..."
+
+    SKILLS_SRC="$AGENT_DIR/skills"
+    SKILLS_DST="$HOME/.claude/skills"
+
+    if [ ! -d "$SKILLS_SRC" ]; then
+        echo "  ⚠ skills/ directory not found, skipping"
+        return
+    fi
+
+    mkdir -p "$SKILLS_DST"
+
+    for skill_file in "$SKILLS_SRC"/*.md; do
+        [ -f "$skill_file" ] || continue
+        dest="$SKILLS_DST/$(basename "$skill_file")"
+        if [ -f "$dest" ]; then
+            echo "  ↩ $(basename "$skill_file") already exists, skipping (delete to reinstall)"
+        else
+            cp "$skill_file" "$dest"
+            echo "  ✓ $(basename "$skill_file") → $dest"
+        fi
+    done
+}
+
 main() {
     check_postgres
     setup_venv
@@ -244,6 +270,7 @@ main() {
     setup_directories
     create_env_file
     setup_opencode_config
+    install_claude_skills
     test_mcp_server
     print_usage
 }

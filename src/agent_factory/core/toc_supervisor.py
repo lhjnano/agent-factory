@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Callable
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
@@ -8,6 +8,7 @@ from .work import Work, WorkStatus, WorkPriority, WorkQueue, PlanStatus, WorkRes
 from .agent_pool import AgentPool, AgentStatus, AgentInstance
 from .raci import RACI, RACIRole
 from .skill_manager import SkillManager
+from .scaling.auto_scaler import AutoScaler
 
 
 class BottleneckType(Enum):
@@ -78,6 +79,14 @@ class TOCSupervisor:
 
         # Skill management
         self.skill_manager = SkillManager(repo_root or Path.cwd())
+
+        # Agent factory registry & AutoScaler (단일 스케일링 진입점)
+        self._agent_factories: Dict[str, Callable[[], AgentInstance]] = {}
+        self._auto_scaler = AutoScaler(agent_pool=agent_pool, queue_manager=work_queue)
+
+    def register_agent_factory(self, agent_type: str, factory: Callable[[], AgentInstance]) -> None:
+        self._agent_factories[agent_type] = factory
+        self._auto_scaler.register_agent_factory(agent_type, factory)
     
     async def analyze_system(self) -> Dict[str, Any]:
         analysis = {
@@ -331,61 +340,108 @@ class TOCSupervisor:
         
         return recommendations
     
+    def _take_system_snapshot(self) -> Dict[str, Any]:
+        pool_status = self._agent_pool.get_pool_status()
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "utilization_rate": pool_status.get("utilization_rate", 0),
+            "total_agents": pool_status.get("total_agents", 0),
+            "busy_agents": pool_status.get("busy_agents", 0),
+            "capacity_by_type": {
+                agent_type: {
+                    "capacity": self._agent_pool.get_capacity(agent_type),
+                    "available": self._agent_pool.get_available_capacity(agent_type),
+                }
+                for agent_type in self._agent_pool._type_index.keys()
+            }
+        }
+
+    def _compare_snapshots(self, before: Dict, after: Dict) -> Dict[str, Any]:
+        return {
+            "utilization_delta": after["utilization_rate"] - before["utilization_rate"],
+            "agent_delta": after["total_agents"] - before["total_agents"],
+            "improved": after["utilization_rate"] < before["utilization_rate"]
+        }
+
     async def optimize(self) -> Dict[str, Any]:
+        before_snapshot = self._take_system_snapshot()
         analysis = await self.analyze_system()
         optimizations_applied = []
-        
+
         for bottleneck in self._bottlenecks[-5:]:
             if bottleneck.resolved_at:
                 continue
-            
+
             if bottleneck.bottleneck_type == BottleneckType.AGENT_CAPACITY:
                 optimization = await self._optimize_capacity(bottleneck)
                 if optimization:
                     optimizations_applied.append(optimization)
                     bottleneck.resolution_applied = optimization["action"]
                     bottleneck.resolved_at = datetime.now()
-            
+
             elif bottleneck.bottleneck_type == BottleneckType.WORK_DEPENDENCY:
                 optimization = await self._optimize_dependencies(bottleneck)
                 if optimization:
                     optimizations_applied.append(optimization)
                     bottleneck.resolution_applied = optimization["action"]
                     bottleneck.resolved_at = datetime.now()
-            
+
             elif bottleneck.bottleneck_type == BottleneckType.IMBALANCED_LOAD:
                 optimization = await self._optimize_load_balance(bottleneck)
                 if optimization:
                     optimizations_applied.append(optimization)
                     bottleneck.resolution_applied = optimization["action"]
                     bottleneck.resolved_at = datetime.now()
-        
+
+        after_snapshot = self._take_system_snapshot()
+        delta = self._compare_snapshots(before_snapshot, after_snapshot)
+
         self._optimization_log.extend(optimizations_applied)
-        
+
         return {
             "analysis": analysis,
             "optimizations_applied": optimizations_applied,
-            "total_optimizations": len(self._optimization_log)
+            "total_optimizations": len(self._optimization_log),
+            "before_snapshot": before_snapshot,
+            "after_snapshot": after_snapshot,
+            "improvement_delta": delta
         }
     
+    def _snapshot_agent_type(self, agent_type: str) -> Dict[str, Any]:
+        return {
+            "agent_type": agent_type,
+            "capacity": self._agent_pool.get_capacity(agent_type),
+            "available": self._agent_pool.get_available_capacity(agent_type),
+        }
+
     async def _optimize_capacity(self, bottleneck: BottleneckAnalysis) -> Optional[Dict[str, Any]]:
         affected_agents = bottleneck.affected_agents
         if not affected_agents:
             return None
-        
+
         agent = self._agent_pool.get_agent(affected_agents[0])
         if not agent:
             return None
-        
+
+        agent_type = agent.agent_type
+        if not self._agent_factories.get(agent_type):
+            return None
+
+        before = self._snapshot_agent_type(agent_type)
+        decisions = await self._auto_scaler.evaluate_and_scale()
+        after = self._snapshot_agent_type(agent_type)
+
+        scaled = after["available"] > before["available"] or after["capacity"] > before["capacity"]
         return {
             "type": "capacity_optimization",
-            "action": f"suggested_scale_up_{agent.agent_type}",
-            "details": {
-                "agent_type": agent.agent_type,
-                "current_capacity": self._agent_pool.get_capacity(agent.agent_type),
-                "recommended_additional": 2,
-                "reason": bottleneck.root_cause
-            },
+            "action": "executed_scale_up" if scaled else "no_change",
+            "agent_type": agent_type,
+            "before": before,
+            "after": after,
+            "auto_scaler_decisions": [
+                {"action": d.action.value, "count": d.count, "reason": d.reason}
+                for d in decisions
+            ],
             "timestamp": datetime.now().isoformat()
         }
     
@@ -393,19 +449,23 @@ class TOCSupervisor:
         affected_works = bottleneck.affected_works
         if not affected_works:
             return None
-        
+
+        changed = []
+        for work_id in affected_works:
+            work = await self._work_queue.get_work(work_id)
+            if work and work.priority != WorkPriority.CRITICAL:
+                success = await self._work_queue.change_priority(work_id, WorkPriority.CRITICAL)
+                if success:
+                    changed.append({
+                        "work_id": work_id,
+                        "before": work.priority.name,
+                        "after": "CRITICAL"
+                    })
+
         return {
             "type": "dependency_optimization",
-            "action": "prioritize_blocking_work",
-            "details": {
-                "blocking_works": list(set(
-                    dep for work_id in affected_works
-                    for dep in self._work_queue._queue
-                    if hasattr(dep, 'work_id') and dep.work_id in affected_works
-                )),
-                "blocked_count": len(affected_works),
-                "recommended_priority": "CRITICAL"
-            },
+            "action": "prioritize_blocking_works",
+            "changed_works": changed,
             "timestamp": datetime.now().isoformat()
         }
     

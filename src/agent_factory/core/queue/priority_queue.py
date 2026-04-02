@@ -194,3 +194,33 @@ class PriorityQueue(BaseQueue):
         async with self._lock:
             priority_work = self._work_index.get(work_id)
             return priority_work.work if priority_work else None
+
+    def _map_work_priority_to_level(self, work_priority) -> PriorityLevel:
+        from ..work import WorkPriority
+        priority_map = {
+            WorkPriority.CRITICAL: PriorityLevel.CRITICAL,
+            WorkPriority.HIGH: PriorityLevel.HIGH,
+            WorkPriority.MEDIUM: PriorityLevel.MEDIUM,
+            WorkPriority.LOW: PriorityLevel.LOW,
+        }
+        return priority_map.get(work_priority, PriorityLevel.MEDIUM)
+
+    async def change_priority(self, work_id: str, new_priority) -> bool:
+        """우선순위 변경. _lock 내에서 원자적으로 처리하여 dequeue 경쟁 방지."""
+        async with self._lock:
+            if work_id not in self._work_index:
+                return False
+            priority_work = self._work_index[work_id]
+            new_level = self._map_work_priority_to_level(new_priority)
+            if priority_work.priority == new_level:
+                return True
+            old_level = priority_work.priority
+            try:
+                self._queues[old_level].remove(priority_work)
+            except ValueError:
+                return False
+            priority_work.priority = new_level
+            priority_work.work.priority = new_priority
+            priority_work.starvation_counter = 0
+            self._queues[new_level].append(priority_work)
+            return True

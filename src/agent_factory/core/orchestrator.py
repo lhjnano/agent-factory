@@ -74,6 +74,7 @@ class MultiAgentOrchestrator:
     
     def register_agent_factory(self, agent_type: str, factory: Callable[[], AgentInstance]):
         self._agent_factories[agent_type] = factory
+        self.toc_supervisor.register_agent_factory(agent_type, factory)
     
     def register_work_handler(self, work_type: str, handler: Callable):
         self._work_handlers[work_type] = handler
@@ -527,15 +528,22 @@ class MultiAgentOrchestrator:
                     inputs=work.inputs,
                     dependencies=work.dependencies
                 )
-                
-                full_context = self.context_manager.get_full_context_for_work(
+
+                # 압축 컨텍스트 사용 — 임계치 초과 값은 파일 참조로 교체
+                compressed_context = self.context_manager.get_compressed_context_for_work(
                     self._current_workflow_id,
                     work.work_id
                 )
-                
+                # 에이전트가 읽기 쉬운 요약도 함께 제공
+                context_summary = self.context_manager.get_context_summary_for_work(
+                    self._current_workflow_id,
+                    work.work_id
+                )
+
                 inputs_with_context = {
                     **work.inputs,
-                    "_context": full_context
+                    "_context": compressed_context,
+                    "_context_summary": context_summary,
                 }
             else:
                 inputs_with_context = work.inputs

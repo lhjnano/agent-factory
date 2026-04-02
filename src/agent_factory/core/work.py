@@ -245,3 +245,23 @@ class WorkQueue:
         async with self._lock:
             completed_ids = {w.work_id for w in self._queue if w.status == WorkStatus.COMPLETED}
             return [w for w in self._queue if not w.can_start(completed_ids)]
+
+    async def get_all_pending(self) -> List[Work]:
+        async with self._lock:
+            return [w for w in self._queue if w.status in [WorkStatus.PENDING, WorkStatus.QUEUED]]
+
+    async def get_work(self, work_id: str) -> Optional[Work]:
+        async with self._lock:
+            for work in self._queue:
+                if work.work_id == work_id:
+                    return work
+            return None
+
+    async def change_priority(self, work_id: str, new_priority: WorkPriority) -> bool:
+        async with self._lock:
+            for work in self._queue:
+                if work.work_id == work_id:
+                    work.priority = new_priority
+                    self._queue.sort(key=lambda w: w.priority.value)
+                    return True
+            return False

@@ -9,6 +9,18 @@ from mcp.client.stdio import stdio_client, StdioServerParameters
 from .. import expand_config_paths, AGENT_DIR, HOME_DIR
 
 
+async def _write_file(path: Path, content: str, filesystem_session=None):
+    """파일 쓰기 — filesystem MCP 세션이 있으면 MCP로, 없으면 직접 쓴다."""
+    if filesystem_session:
+        await filesystem_session.call_tool(
+            "write_file",
+            arguments={"path": str(path), "content": content}
+        )
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+
+
 class DesignDevelopmentAgent:
     def __init__(self):
         self.sessions: Dict[str, ClientSession] = {}
@@ -88,14 +100,11 @@ class {model_name}(nn.Module):
         )
 
         filesystem_session = self.sessions.get("filesystem")
-        if filesystem_session:
-            await filesystem_session.call_tool(
-                "write_file",
-                arguments={
-                    "path": str(HOME_DIR / "src" / "model.py"),
-                    "content": code_template.strip()
-                }
-            )
+        await _write_file(
+            HOME_DIR / "src" / "model.py",
+            code_template.strip(),
+            filesystem_session,
+        )
 
         return code_template
 
@@ -126,14 +135,11 @@ def train_model(model, train_loader, val_loader, epochs=100):
         )
 
         filesystem_session = self.sessions.get("filesystem")
-        if filesystem_session:
-            await filesystem_session.call_tool(
-                "write_file",
-                arguments={
-                    "path": str(HOME_DIR / "src" / "train.py"),
-                    "content": script.strip()
-                }
-            )
+        await _write_file(
+            HOME_DIR / "src" / "train.py",
+            script.strip(),
+            filesystem_session,
+        )
 
         return script
 
